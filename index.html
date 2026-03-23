@@ -1627,63 +1627,120 @@ window.addEventListener('load', async () => {
   </div>
   
   <!-- ══════════ ABA BI COMERCIAL ══════════ -->
-  <!-- NOVA ABA BI COMERCIAL v5 - PERFORMANCE OTIMIZADA -->
-<div id="tab-content-bi-comercial" class="tab-content" style="display:none">
-    <!-- Barra de Upload Local Rápido -->
-    <div style="background:var(--panel); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <span style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase;">Fontes Locais:</span>
-        <button class="filter-btn" onclick="document.getElementById('local-crm').click()">💼 CRM</button>
-        <input type="file" id="local-crm" hidden onchange="biLocalUpload('crm', this)">
-        <button class="filter-btn" onclick="document.getElementById('local-vendas').click()">🛒 Vendas</button>
-        <input type="file" id="local-vendas" hidden onchange="biLocalUpload('vendas', this)">
-        <button class="filter-btn" onclick="document.getElementById('local-matrix').click()">🏅 Matrix</button>
-        <input type="file" id="local-matrix" hidden onchange="biLocalUpload('matrix', this)">
-        <div id="bi-sync-status" style="font-size:11px; color:var(--accent); margin-left:auto; font-weight:700;">Drive Sync Ativo</div>
+  <div id="tab-content-bi-comercial" class="tab-content" style="display:none">
+
+    <!-- ── Upload rápido dentro da aba (não precisa abrir o painel global) ── -->
+    <div id="bi-upload-bar" style="background:var(--panel);border-bottom:1px solid var(--border);padding:14px 20px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap">Fontes do Funil:</span>
+
+        <!-- CRM -->
+        <label id="bi-slot-crm" style="display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid #8B5CF644;border-radius:8px;padding:7px 12px;cursor:pointer;transition:all .2s;font-size:12px;min-width:160px">
+          <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="biQuickUpload('crm',this)">
+          <span id="bi-slot-crm-icon" style="font-size:14px">💼</span>
+          <div>
+            <div style="font-weight:700;color:#8B5CF6;font-size:11px">CRM Hubsoft</div>
+            <div id="bi-slot-crm-name" style="font-size:10px;color:var(--muted)">Clique para carregar</div>
+          </div>
+        </label>
+
+        <!-- Vendas/Serviços -->
+        <label id="bi-slot-vendas" style="display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid #10B98144;border-radius:8px;padding:7px 12px;cursor:pointer;transition:all .2s;font-size:12px;min-width:160px">
+          <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="biQuickUpload('vendas',this)">
+          <span id="bi-slot-vendas-icon" style="font-size:14px">🛒</span>
+          <div>
+            <div style="font-weight:700;color:#10B981;font-size:11px">Vendas / Serviços</div>
+            <div id="bi-slot-vendas-name" style="font-size:10px;color:var(--muted)">Clique para carregar</div>
+          </div>
+        </label>
+
+        <!-- Matrix / Atendimento Analítico -->
+        <label id="bi-slot-matrix" style="display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid #F59E0B44;border-radius:8px;padding:7px 12px;cursor:pointer;transition:all .2s;font-size:12px;min-width:180px">
+          <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="biQuickUpload('matrix',this)">
+          <span id="bi-slot-matrix-icon" style="font-size:14px">💬</span>
+          <div>
+            <div style="font-weight:700;color:#F59E0B;font-size:11px">Atendimento Analítico</div>
+            <div id="bi-slot-matrix-name" style="font-size:10px;color:var(--muted)">Aceite · Matrix Chat</div>
+          </div>
+        </label>
+
+        <!-- OS Abertas -->
+        <label id="bi-slot-osab" style="display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid #3B82F644;border-radius:8px;padding:7px 12px;cursor:pointer;transition:all .2s;font-size:12px;min-width:160px">
+          <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="biQuickUpload('osab',this)">
+          <span id="bi-slot-osab-icon" style="font-size:14px">🔧</span>
+          <div>
+            <div style="font-weight:700;color:#3B82F6;font-size:11px">OS Abertas</div>
+            <div id="bi-slot-osab-name" style="font-size:10px;color:var(--muted)">Instalações realizadas</div>
+          </div>
+        </label>
+
+        <div id="bi-upload-status" style="font-size:11px;color:var(--muted);margin-left:auto"></div>
+      </div>
     </div>
 
-    <div id="bi-v5-container" style="padding:20px;">
-        <!-- KPIs SUPERIORES -->
-        <div class="kpi-row" id="bi-kpi-row" style="display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px"></div>
-
-        <!-- FUNIL DE VENDAS -->
-        <div class="card" style="margin-bottom:20px">
-            <div class="sec-title"><h3>🔽 Funil de Vendas (Leads CRM → Instalados Hubsoft)</h3></div>
-            <div id="bi-funnel-wrap" style="display:flex; flex-direction:column; align-items:center; gap:5px; padding:20px 0;"></div>
-        </div>
-
-        <!-- RANKING DA VERDADE -->
-        <div class="card" style="margin-bottom:20px; border-top: 3px solid var(--red);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-                <div class="sec-title" style="margin:0"><h3>🔎 O Ranking da Verdade (Auditoria de Vendas)</h3></div>
-                <button onclick="biExportarCSV()" class="filter-btn">⬇ Exportar CSV</button>
-            </div>
-            <div class="tbl-wrap">
-                <table>
-                    <thead>
-                        <tr id="bi-truth-head" style="background:var(--panel)">
-                            <th>#</th><th>Vendedora</th><th>Leads CRM</th><th>Vendas CRM</th><th>Instalados Hubsoft</th><th>Conversão Real</th><th>GAP</th><th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bi-truth-body"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px">
-            <div class="card">
-                <div class="sec-title"><h3>📊 Motivos de Perda (Pareto)</h3></div>
-                <canvas id="bi-chart-perda" height="250"></canvas>
-            </div>
-            <div class="card">
-                <div class="sec-title"><h3>🏷️ Conversão por Origem (Tag)</h3></div>
-                <canvas id="bi-chart-tag" height="250"></canvas>
-            </div>
-        </div>
+    <!-- Tela vazia (quando nenhum dado está carregado) -->
+    <div id="bi-upload-screen" style="display:none;min-height:300px;align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:40px 20px;text-align:center">
+      <div style="font-size:48px">💼</div>
+      <div style="font-size:20px;font-weight:800;color:var(--accent)">BI Comercial</div>
+      <div style="color:var(--muted);font-size:13px;max-width:440px;line-height:1.7">
+        Carregue pelo menos o <strong style="color:var(--text)">CRM Hubsoft</strong> usando os botões acima
+        para ativar o Funil de Conversão e o Ranking da Verdade.
+      </div>
     </div>
-</div>
-  
-  
-  
+
+    <div id="bi-dashboard" style="display:none;padding:20px">
+
+      <!-- ── Funil de Conversão ───────────────────────────────────────────── -->
+      <div id="bi-funil-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:18px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#8B5CF6,#10B981,#F59E0B,#3B82F6)"></div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">📊 Funil Comercial</div>
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:16px">Jornada do Lead → Instalação</div>
+        <div id="bi-funil" style="display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:4px"></div>
+        <div id="bi-funil-fonte" style="font-size:10px;color:var(--muted);margin-top:10px;text-align:right"></div>
+      </div>
+
+      <!-- ── KPIs ─────────────────────────────────────────────────────────── -->
+      <div id="bi-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:22px"></div>
+      <!-- Ranking da Verdade -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:18px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#EF4444,#F97316)"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">🔎 Auditoria</div>
+            <div style="font-size:17px;font-weight:800;color:var(--text);font-family:var(--font-head,monospace)">Ranking da Verdade</div>
+            <div style="font-size:11px;color:var(--muted)" id="bi-ranking-sub"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div id="bi-inconsist-badge"></div>
+            <button onclick="biFiltrarEnroladas()" id="bi-btn-enrol" style="background:rgba(245,158,11,.15);color:#F59E0B;border:1px solid rgba(245,158,11,.35);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">⏰ Enroladas</button>
+            <button onclick="biExportarCSV()" style="background:var(--panel);color:var(--muted2);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">⬇ CSV</button>
+          </div>
+        </div>
+        <div style="overflow:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr id="bi-ranking-head" style="background:var(--panel)"></tr>
+            </thead>
+            <tbody id="bi-ranking-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Gráfico Pareto motivos de perda -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#EF4444,#F97316)"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">📊 Pareto — Motivos de Perda</div>
+          <canvas id="bi-chart-pareto" height="220"></canvas>
+          <div id="bi-pareto-table" style="margin-top:8px"></div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#8B5CF6,#3B82F6)"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">🏷 Conversão por Origem (Tag CRM)</div>
+          <canvas id="bi-chart-tags" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ══════════ ABA VISÃO 360 ══════════ -->
   <div class="tab-content" id="tab-content-visao360">
@@ -2168,93 +2225,105 @@ window.addEventListener('load', () => {
     // Dá um tempo para o login sumir antes de começar o download pesado
     setTimeout(nuvyonCloudSync, 2500); 
 });
-// MOTOR DE SINCRONIZAÇÃO DRIVE v16.0 - BUSCA AMPLIADA
+
 async function nuvyonCloudSync() {
     const subMsg = document.getElementById('cloud-sub-msg');
-    if(!subMsg) return;
-    subMsg.textContent = "⏳ Conectando ao Google Drive...";
-    
+    const list = document.getElementById('cloud-file-list');
+    if(!subMsg || !list) return;
+
+    subMsg.textContent = "⏳ Mapeando arquivos no Drive...";
+    list.innerHTML = "";
+
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + CLOUD_CONFIG.folder + "' in parents and trashed=false")}&fields=files(id,name,size,modifiedTime)&key=${CLOUD_CONFIG.key}`;
+
     try {
-        const key = 'AIzaSyBbLA8nzeIpnz5fOVZotTNwfezqDBFLnek';
-        const folder = '1SGlZZyPglW181NBEHzxnUpOfXChUX6qR';
-        
-        // Lista os arquivos na pasta
-        const urlList = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + folder + "' in parents and trashed=false")}&fields=files(id,name,modifiedTime)&key=${key}`;
-        const res = await fetch(urlList);
-        const data = await res.json();
+        const response = await fetch(url);
+        const data = await response.json();
         const files = data.files || [];
 
-        if (files.length === 0) {
+        if(files.length === 0) {
             subMsg.textContent = "○ Pasta vazia no Drive.";
             return;
         }
 
-        // Processa cada categoria do nosso MAPA
-        for (const m of CLOUD_MAP) {
-            // Procura o arquivo mais recente que bate com o nome (Regex)
-            const matchedFile = files
-                .filter(f => m.r.test(f.name))
-                .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime))[0];
+        let queue = [];
+        CLOUD_MAP.forEach(m => {
+            const match = files.filter(f => m.r.test(f.name))
+                               .sort((a,b) => b.modifiedTime.localeCompare(a.modifiedTime))[0];
+            if(match) queue.push({ id: match.id, name: match.name, tipo: m.tipo, label: m.label });
+        });
 
-            if (matchedFile) {
-                subMsg.textContent = `⬇️ Baixando: ${m.label}...`;
-                await nuvyonSilentDownload(matchedFile.id, m.tipo, matchedFile.name, key);
-            }
+        subMsg.textContent = `⬇️ Baixando ${queue.length} arquivos...`;
+
+        let countLoaded = 0;
+        // Faz o download de todos os arquivos primeiro
+        for (const item of queue) {
+            const row = document.createElement('div');
+            row.style.cssText = "padding:6px 10px; border-bottom:1px solid var(--border); font-size:11px; display:flex; justify-content:space-between; color:var(--text)";
+            row.innerHTML = `<span>📂 ${item.label}</span> <span id="sync-${item.tipo}">⏳</span>`;
+            list.appendChild(row);
+            
+            const success = await nuvyonSilentDownload(item.id, item.tipo, item.name);
+            if(success) countLoaded++;
+            subMsg.textContent = `⬇️ Baixando arquivos (${countLoaded}/${queue.length})`;
         }
 
-        // Atualiza tudo de uma vez no final
-        subMsg.textContent = "⚙️ Processando Dashboard...";
+        // AGORA SIM: Processa o dashboard INTEIRO uma única vez
+        subMsg.innerHTML = "<b style='color:var(--accent)'>⚙️ Calculando Dashboard (ROI/Churn)...</b>";
+        
         setTimeout(() => {
             if(typeof _processRestoredState === 'function') _processRestoredState();
+            // Força a atualização de todas as abas carregadas
             if(typeof renderAll === 'function') renderAll();
-            if(typeof renderBIComercial === 'function') renderBIComercial();
-            subMsg.innerHTML = "<b style='color:var(--accent)'>✅ Tudo Sincronizado!</b>";
-        }, 500);
+            subMsg.innerHTML = "<b style='color:var(--accent)'>✅ Dashboard Atualizado!</b>";
+        }, 100);
 
-    } catch (e) { 
-        subMsg.textContent = "❌ Erro: Verifique a conexão.";
-        console.error("Erro no Sync:", e); 
+    } catch (err) {
+        subMsg.textContent = "❌ Erro na conexão.";
+        console.error("Sync Error:", err);
     }
 }
 
-async function nuvyonSilentDownload(id, tipo, filename, key) {
-    try {
-        const urlDl = `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${key}`;
-        const r = await fetch(urlDl);
-        if (!r.ok) return false;
+async function nuvyonSilentDownload(id, tipo, filename) {
+    const indicator = document.getElementById('sync-' + tipo);
+    const url = `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${CLOUD_CONFIG.key}`;
 
+    try {
+        const r = await fetch(url);
         const blob = await r.blob();
         const ext = filename.split('.').pop().toLowerCase();
-        let json = [];
+        let dataJson = [];
 
         if (ext === 'csv') {
             const text = await blob.text();
-            json = Papa.parse(text, { header: true, skipEmptyLines: true }).data;
+            dataJson = Papa.parse(text, { header: true, skipEmptyLines: true }).data;
         } else {
             const buffer = await blob.arrayBuffer();
-            const wb = XLSX.read(buffer, { type: 'array' });
-            json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+            dataJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
         }
 
-        // Injeta no STATE global conforme o tipo
-        if (tipo === 'os') { STATE.rawOS = json; }
-        if (tipo === 'at') { STATE.rawAT = json; }
-        if (tipo === 'matrix') { STATE.relatorioAnalitico = json; }
-        if (tipo === 'osab') { STATE.rawOSAb = json; STATE.rawOSAbertas = json; }
-        if (tipo === 'nps') { STATE.rawNPS = json; }
-        if (tipo === 'crm') { STATE.rawCRM = json; }
-        if (tipo === 'vendas') { STATE.rawVendas = json; }
-        if (tipo === 'agentes') { STATE.rawAgentes = json; }
-        
+        // Injeta no STATE global
+        if(tipo === 'os') STATE.rawOS = dataJson;
+        if(tipo === 'at') STATE.rawAT = dataJson;
+        if(tipo === 'sac') STATE.rawSAC = dataJson;
+        if(tipo === 'matrix') STATE.relatorioAnalitico = dataJson;
+        if(tipo === 'osab') { STATE.rawOSAb = dataJson; STATE.rawOSAbertas = dataJson; }
+        if(tipo === 'nps') STATE.rawNPS = dataJson;
+        if(tipo === 'npsTelefonia') STATE.rawNpsTelefonia = dataJson;
+        if(tipo === 'sinais') STATE.rawSinais = dataJson;
+        if(tipo === 'agentes') STATE.rawAgentes = dataJson;
+        if(tipo === 'crm') STATE.rawCRM = dataJson;
+        if(tipo === 'vendas') STATE.rawVendas = dataJson;
+
         STATE.loaded[tipo] = true;
+        if(indicator) { indicator.textContent = "OK"; indicator.style.color = "var(--accent)"; }
         return true;
-    } catch (err) {
-        console.error("Erro baixando " + filename, err);
+    } catch (e) {
+        if(indicator) { indicator.textContent = "Erro"; indicator.style.color = "var(--red)"; }
         return false;
     }
 }
-
-
 </script>
 
 
@@ -10984,213 +11053,189 @@ async function adminEditApiKey(idx) {
   var acao = nova.trim() ? 'configurada' : 'removida';
   dbLog('Drive API Key ' + acao + ' para: ' + users[idx].user);
   showAdminMsg('✅ Drive API Key ' + acao + ' para ' + users[idx].user);
-}
-//AJUSTES 23/3/26
- // <--- Esse é o fim da função adminEditApiKey que já está no seu arquivo
+
+} // <--- Fim da adminEditApiKey. O código abaixo entra aqui:
 
 /* ══════════════════════════════════════════════════════════════════
-   MOTOR INTEGRADO NUVYON v13.0 - LIMPEZA E RECUPERAÇÃO TOTAL
-   Este bloco é auto-contido e evita erros de "já declarado"
+   NUVYON ULTIMATE ENGINE v19.0 - RECUPERAÇÃO TOTAL
+   BI v10 + SYNC DRIVE + MENU AGRUPADO RESILIENTE
 ══════════════════════════════════════════════════════════════════ */
-(function() {
-    // Usamos 'var' para permitir sobreposição se houver colagem duplicada
-    var F_MAP = {
-        'FILIALPASSOS': 'Tania', 'TANIA': 'Tania',
-        'FILIALCB': 'Victoria Schiavelli', 'VICTORIASCHIAVELLI': 'Victoria Schiavelli',
-        'FILIALRIOPARDO': 'Lavinia Martins', 'LAVINIAMARTINS': 'Lavinia Martins',
-        'FILIALMONTESANTO': 'Thais Moreira', 'THAISMOREIRA': 'Thais Moreira',
-        'FILIALMOGI': '9.0Evellyn Cafe', 'EVELLYNCAFE': '9.0Evellyn Cafe',
-        'FILIALCACONDE': '8Leticia Carvalho', 'LETICIACARVALHO': '8Leticia Carvalho',
-        'ANAPAULA': 'Ana Paula Moraes', 'ANAPAULAMORAES': 'Ana Paula Moraes'
-    };
 
-    var SYNC_CFG = { 
-        k: 'AIzaSyBbLA8nzeIpnz5fOVZotTNwfezqDBFLnek', 
-        f: '1SGlZZyPglW181NBEHzxnUpOfXChUX6qR' 
-    };
+// 1. CONFIGURAÇÕES (Usando VAR para evitar erro de redeclaração)
+var NUV_KEY = 'AIzaSyBbLA8nzeIpnz5fOVZotTNwfezqDBFLnek';
+var NUV_FID = '1SGlZZyPglW181NBEHzxnUpOfXChUX6qR';
 
-    // MOTOR DO BI COMERCIAL
-    window.renderBIComercial = function() {
+var NUV_MAPA = [
+    {r:/relatorio-de-ordens-de-servico(?!.*abertas)/i, tipo:'os', label:'OS Técnicas'},
+    {r:/relatorio-de-atendimentos/i,                   tipo:'at', label:'Atendimentos HubSoft'},
+    {r:/matrix|relatorio_atendimento_analitico/i,      tipo:'matrix', label:'Matrix Analítico'},
+    {r:/relatorio-de-ordens.*abertas/i,                tipo:'osab', label:'OS Abertas'},
+    {r:/relatorio_de_produtividade/i,                  tipo:'prod', label:'Produtividade'},
+    {r:/detalhamento_de_pesquisa(?!.*fone)/i,          tipo:'nps', label:'NPS Chat'},
+    {r:/relatorio_de_crm/i,                            tipo:'crm', label:'CRM Hubsoft'},
+    {r:/relatorio-de-servicos/i,                       tipo:'vendas', label:'Vendas Hubsoft'}
+];
+
+// 2. FUNÇÕES DE INTERFACE GLOBAIS
+window.openUpload = function() { 
+    var overlay = document.getElementById('upload-overlay');
+    if(overlay) overlay.classList.add('open'); 
+};
+
+window.closeUpload = function() { 
+    var overlay = document.getElementById('upload-overlay');
+    if(overlay) overlay.classList.remove('open'); 
+};
+
+window.showTab = function(t) {
+    console.log("Navegando para:", t);
+    // Esconder todos os conteúdos
+    var contents = document.querySelectorAll('.tab-content');
+    for(var i=0; i<contents.length; i++) {
+        contents[i].classList.remove('active');
+        contents[i].style.display = 'none';
+    }
+    // Remover active de todos os botões
+    var btns = document.querySelectorAll('.tab-btn, .tabgroup-item, .tabgroup-btn');
+    for(var j=0; j<btns.length; j++) {
+        btns[j].classList.remove('active');
+    }
+    // Mostrar o alvo
+    var target = document.getElementById('tab-content-' + t);
+    if(target) {
+        target.classList.add('active');
+        target.style.display = 'block';
+    }
+    // Ativar botão
+    var btn = document.getElementById('tab-' + t);
+    if(btn) btn.classList.add('active');
+
+    // Funções específicas
+    if(t === 'bi-comercial' && typeof renderBIComercial === 'function') renderBIComercial();
+    if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
+};
+
+// 3. MOTOR BI COMERCIAL v10.0 (ULTRA RÁPIDO)
+window.renderBIComercial = function() {
+    try {
         var crm = STATE.rawCRM || [];
-        var vendas = STATE.rawVendas || [];
-        var container = document.getElementById('bi-v5-container');
-        if(!container) return;
-        if (!crm.length) { container.innerHTML = '<div style="text-align:center;padding:80px;color:var(--muted)">Aguardando dados...</div>'; return; }
+        var vds = STATE.rawVendas || [];
+        var box = document.getElementById('bi-v5-container');
+        if(!box) return;
+        if(!crm.length) { box.innerHTML = '<div style="text-align:center;padding:100px;color:var(--muted)">Aguardando dados do Drive...</div>'; return; }
 
-        var hubVendas = new Map();
-        vendas.forEach(v => {
+        var vMap = new Map();
+        vds.forEach(v => {
             var cpf = String(v['cpf_cnpj'] || v['prospecto_cpf_cnpj'] || '').replace(/\D/g, '').slice(-11);
-            if (cpf) hubVendas.set(cpf, true);
+            if(cpf) vMap.set(cpf, true);
         });
 
-        var vendedoras = new Map();
+        var vend = new Map();
         crm.forEach(l => {
-            var rawNome = l.usuario || l.vendedora || 'SEM VENDEDORA';
-            var sc = String(rawNome).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toUpperCase();
-            var nomeReal = F_MAP[sc] || String(rawNome).replace(/^[\d\s.\-]+/, '').trim();
-            if (!vendedoras.has(sc)) vendedoras.set(sc, { nome: nomeReal, leads: 0, conv: 0, inst: 0 });
-            var v = vendedoras.get(sc);
+            var rN = l.usuario || l.vendedora || 'OUTROS';
+            var sc = String(rN).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toUpperCase();
+            if(!vend.has(sc)) vend.set(sc, { nome: rN, leads: 0, conv: 0, inst: 0 });
+            var v = vend.get(sc);
             v.leads++;
-            if (String(l.status_prospecto || l.status || '').toLowerCase() === 'convertido') v.conv++;
+            if(String(l.status_prospecto || l.status || '').toLowerCase() === 'convertido') v.conv++;
             var cpf = String(l.prospecto_cpf_cnpj || '').replace(/\D/g, '').slice(-11);
-            if (cpf && hubVendas.has(cpf)) v.inst++;
+            if(cpf && vMap.has(cpf)) v.inst++;
         });
 
-        var rows = Array.from(vendedoras.values()).sort((a,b) => b.inst - a.inst);
-        var totInst = rows.reduce((s, r) => s + r.inst, 0);
-
+        var rows = Array.from(vend.values()).sort((a,b) => b.inst - a.inst);
         document.getElementById('bi-kpi-row').innerHTML = `
-            <div class="kpi"><div class="kpi-label">Leads CRM</div><div class="kpi-value" style="color:var(--blue)">${crm.length}</div></div>
-            <div class="kpi"><div class="kpi-label">Vendas Reais</div><div class="kpi-value" style="color:var(--green)">${totInst}</div></div>
-            <div class="kpi"><div class="kpi-label">Equipe</div><div class="kpi-value" style="color:var(--purple)">${rows.length}</div></div>
-        `;
+            <div class="kpi"><div class="kpi-label">Leads</div><div class="kpi-value">${crm.length}</div></div>
+            <div class="kpi"><div class="kpi-label">Vendas Reais</div><div class="kpi-value" style="color:var(--green)">${rows.reduce((s,r)=>s+r.inst,0)}</div></div>
+            <div class="kpi"><div class="kpi-label">Equipe</div><div class="kpi-value">${rows.length}</div></div>`;
 
         document.getElementById('bi-truth-body').innerHTML = rows.map((r, i) => {
             var tx = r.leads ? ((r.inst / r.leads) * 100).toFixed(1) : 0;
             var gap = Math.max(0, r.conv - r.inst);
-            var cor = tx < 10 ? 'var(--red)' : tx < 30 ? 'var(--yellow)' : 'var(--green)';
-            return `<tr><td>${i+1}</td><td style="font-weight:700">${r.nome}</td><td>${r.leads}</td><td style="color:var(--blue)">${r.conv}</td><td style="color:var(--green);font-weight:800">${r.inst}</td><td><span class="chip" style="background:${cor}22;color:${cor}">${tx}%</span></td><td>${gap > 0 ? '<b style="color:var(--red)">+'+gap+'</b>' : 'OK'}</td></tr>`;
+            return `<tr><td>${i+1}</td><td style="font-weight:700">${r.nome}</td><td>${r.leads}</td><td>${r.conv}</td><td style="color:var(--green);font-weight:800">${r.inst}</td><td>${tx}%</td><td style="color:var(--red)">${gap>0?'+'+gap:'OK'}</td></tr>`;
         }).join('');
-    };
+    } catch(e){ console.error("Erro BI:", e); }
+};
 
-    // MOTOR DE SINCRONIZAÇÃO DRIVE
-    window.nuvyonCloudSync = async function() {
-        var subMsg = document.getElementById('cloud-sub-msg');
-        if(!subMsg) return;
-        subMsg.textContent = "⏳ Sincronizando...";
-        try {
-            var urlList = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + SYNC_CFG.f + "' in parents and trashed=false")}&key=${SYNC_CFG.k}`;
-            var res = await fetch(urlList);
-            var d = await res.json();
-            var matches = (d.files || []).filter(f => /relatorio|matrix|agente|vendas/i.test(f.name));
-
-            for (var f of matches) {
-                var urlDl = `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${SYNC_CFG.k}`;
-                var r = await fetch(urlDl);
-                var blob = await r.blob();
-                var text = await blob.text();
+// 4. SYNC DRIVE TURBO
+window.nuvyonCloudSync = async function() {
+    var msg = document.getElementById('cloud-sub-msg');
+    if(msg) msg.textContent = "⏳ Sincronizando...";
+    try {
+        var res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + NUV_FID + "' in parents and trashed=false")}&key=${NUV_KEY}`);
+        var data = await res.json();
+        var files = data.files || [];
+        for (var m of NUV_MAPA) {
+            var target = files.filter(x => m.r.test(x.name)).sort((a,b) => b.modifiedTime?.localeCompare(a.modifiedTime))[0];
+            if(target) {
+                if(msg) msg.textContent = "⬇️ " + m.label;
+                var dl = await fetch(`https://www.googleapis.com/drive/v3/files/${target.id}?alt=media&key=${NUV_KEY}`);
+                var blob = await dl.blob();
+                var ext = target.name.split('.').pop().toLowerCase();
                 var json = [];
-
-                if (f.name.toLowerCase().endsWith('.csv')) {
-                    json = Papa.parse(text, { header: true, skipEmptyLines: true }).data;
+                if(ext === 'csv') {
+                    json = Papa.parse(await blob.text(), {header:true, skipEmptyLines:true}).data;
                 } else {
-                    var arrayBuffer = await blob.arrayBuffer();
-                    var wb = XLSX.read(arrayBuffer, { type: 'array' });
-                    json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                    var wb = XLSX.read(await blob.arrayBuffer(), {type:'array'});
+                    json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
                 }
-
-                if(/ordens-de-servico(?!.*abertas)/i.test(f.name)) STATE.rawOS = json;
-                if(/atendimento/i.test(f.name)) STATE.rawAT = json;
-                if(/matrix/i.test(f.name)) STATE.relatorioAnalitico = json;
-                if(/crm/i.test(f.name)) STATE.rawCRM = json;
-                if(/vendas|servicos/i.test(f.name)) STATE.rawVendas = json;
-                if(/8agente/i.test(f.name)) STATE.rawAgentes = json;
+                if(m.tipo==='os') STATE.rawOS = json;
+                if(m.tipo==='at') STATE.rawAT = json;
+                if(m.tipo==='matrix') STATE.relatorioAnalitico = json;
+                if(m.tipo==='crm') STATE.rawCRM = json;
+                if(m.tipo==='vendas') STATE.rawVendas = json;
+                STATE.loaded[m.tipo] = true;
             }
-
-            if(typeof _processRestoredState === 'function') _processRestoredState();
-            if(typeof renderAll === 'function') renderAll();
-            if(typeof renderBIComercial === 'function') renderBIComercial();
-            subMsg.innerHTML = "✅ Sincronizado";
-        } catch (e) { subMsg.textContent = "❌ Erro na Nuvem"; }
-    };
-
-    // INTERFACE AGRUPADA
-    window.buildGroupedTabbar = function() {
-        var tabbar = document.getElementById('tabbar');
-        if (!tabbar || typeof ABA_GRUPOS === 'undefined') return;
-        var activeBtn = tabbar.querySelector('.tab-btn.active');
-        var currentTab = activeBtn ? activeBtn.id.replace('tab-','') : 'gestao';
-        var html = '';
-        ABA_GRUPOS.forEach(g => {
-            var abasOk = (typeof SESSION !== 'undefined' && SESSION) ? g.abas.filter(id => SESSION.role === 'master' || (SESSION.abas && SESSION.abas.includes(id))) : g.abas;
-            if (!abasOk.length) return;
-            var isGActive = g.abas.includes(currentTab);
-            html += `<div class="tabgroup-wrap"><button class="tabgroup-btn ${isGActive?'active':''}" onclick="showTab('${abasOk[0]}')">${g.label} ▾</button><div class="tabgroup-dropdown">${abasOk.map(id => `<button class="tabgroup-item ${id===currentTab?'active':''}" onclick="showTab('${id}')">${id}</button>`).join('')}</div></div>`;
-        });
-        tabbar.innerHTML = html + (document.getElementById('tab-logoff')?.outerHTML || '');
-    };
-
-    // HOOKS DE INICIALIZAÇÃO
-    window.addEventListener('load', function() {
-        if(typeof applySession === 'function') {
-            var oldApply = applySession;
-            applySession = function() { oldApply(); setTimeout(buildGroupedTabbar, 200); };
         }
-        setTimeout(nuvyonCloudSync, 3000);
+        if(typeof _processRestoredState === 'function') _processRestoredState();
+        if(typeof renderAll === 'function') renderAll();
+        if(typeof renderBIComercial === 'function') renderBIComercial();
+        if(msg) msg.textContent = "✅ Dashboard Sincronizado!";
+    } catch(e){ if(msg) msg.textContent = "❌ Erro na Nuvem"; }
+};
+
+// 5. MENU AGRUPADO
+window.buildGroupedTabbar = function() {
+    var tabbar = document.getElementById('tabbar');
+    if(!tabbar || typeof ABA_GRUPOS === 'undefined') return;
+    var activeBtn = tabbar.querySelector('.tab-btn.active') || tabbar.querySelector('.tabgroup-item.active');
+    var currentTab = activeBtn ? activeBtn.id.replace('tab-','') : 'gestao';
+    var html = '';
+    ABA_GRUPOS.forEach(g => {
+        var abasOk = (typeof SESSION !== 'undefined' && SESSION) ? g.abas.filter(id => SESSION.role === 'master' || (SESSION.abas && SESSION.abas.includes(id))) : g.abas;
+        if(!abasOk.length) return;
+        var isGActive = g.abas.includes(currentTab);
+        html += `<div class="tabgroup-wrap"><button class="tabgroup-btn ${isGActive?'active':''}" onclick="showTab('${abasOk[0]}')">${g.label} ▾</button><div class="tabgroup-dropdown">${abasOk.map(id => `<button class="tabgroup-item ${id===currentTab?'active':''}" onclick="showTab('${id}')" id="tab-${id}">${id}</button>`).join('')}</div></div>`;
     });
-})();
+    tabbar.innerHTML = html + (document.getElementById('tab-logoff')?.outerHTML || '');
+};
+
+// INICIALIZAÇÃO
+window.addEventListener('load', function() {
+    var backupSession = applySession;
+    window.applySession = function() {
+        if(typeof backupSession === 'function') backupSession();
+        setTimeout(buildGroupedTabbar, 300);
+    };
+    setTimeout(nuvyonCloudSync, 4000);
+    if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
+});
+
+function biLocalUpload(tipo, input) {
+    var file = input.files[0]; if(!file) return;
+    file.text().then(t => {
+        var data = Papa.parse(t, {header:true}).data;
+        if(tipo === 'crm') STATE.rawCRM = data;
+        if(tipo === 'vendas') STATE.rawVendas = data;
+        renderBIComercial();
+    });
+}
 </script>
 
-<!-- ═══════════════ MODAL CLIENTE ═══════════════ -->
-<div id="cli-modal-overlay" onclick="closeClienteModal(event)" style="display:none;position:fixed;inset:0;background:#000a;z-index:3000;overflow-y:auto;padding:24px 16px">
-  <div id="cli-modal-box" style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:760px;margin:0 auto;padding:0;overflow:hidden">
-    <!-- Header -->
-    <div id="cli-modal-header" style="background:var(--card);padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Ficha do Cliente</div>
-        <div id="cli-modal-nome" style="font-size:17px;font-weight:800;color:var(--text)"></div>
-        <div id="cli-modal-sub" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div id="cli-modal-badge"></div>
-        <button onclick="document.getElementById('cli-modal-overlay').style.display='none'" style="background:var(--border);border:none;color:var(--muted);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px">✕</button>
-      </div>
-    </div>
-    <!-- KPIs -->
-    <div id="cli-modal-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)"></div>
-    <!-- Tabs -->
-    <div style="display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--border)">
-      <button id="ctab-hist" onclick="showCliTab('hist')" class="modal-tab active" style="flex:1;padding:11px;font-size:12px;font-weight:700">📋 Últimos Atendimentos</button>
-      <button id="ctab-analise" onclick="showCliTab('analise')" class="modal-tab" style="flex:1;padding:11px;font-size:12px;font-weight:700">🧠 Análise e Ação</button>
-    </div>
-    <!-- Pane: Histórico -->
-    <div id="cpane-hist" style="padding:18px;display:block">
-      <div id="cli-hist-content"></div>
-    </div>
-    <!-- Pane: Análise -->
-    <div id="cpane-analise" style="padding:18px;display:none">
-      <div id="cli-analise-content"></div>
-    </div>
+<div id="cli-modal-overlay" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:#000a;z-index:3000;overflow-y:auto;padding:24px 16px">
+  <div id="cli-modal-box" style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:760px;margin:0 auto;padding:22px;">
+    <div id="cli-modal-nome" style="font-size:18px;font-weight:800;color:var(--text)">Ficha do Cliente</div>
+    <div id="cli-hist-content" style="margin-top:20px"></div>
   </div>
 </div>
-
-<!-- GITHUB CONFIG MODAL -->
-<div id="gh-config-modal" style="position:fixed;inset:0;background:#000000cc;z-index:10000;display:none;align-items:center;justify-content:center">
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;width:480px;max-width:96vw;max-height:90vh;overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <h3 style="font-size:15px;font-weight:800;color:var(--accent)">☁ Configurar GitHub como banco de dados</h3>
-      <button onclick="closeGhConfig()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:4px 10px;cursor:pointer;font-size:12px">✕</button>
-    </div>
-    <p style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.6">
-      Os usuários serão salvos no arquivo <code style="background:var(--panel);padding:1px 5px;border-radius:3px">nuvyon_banco.json</code> no seu repositório privado do GitHub.
-      Qualquer pessoa que abrir o dashboard vai ler do mesmo lugar. Configure <strong>apenas na sua máquina</strong> (admin).
-    </p>
-    <div style="background:var(--panel);border-radius:9px;padding:14px;margin-bottom:16px;font-size:11px;color:var(--muted);line-height:1.7">
-      <strong style="color:var(--text)">Como obter o token:</strong><br>
-      1. Acesse <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/tokens/new</a><br>
-      2. Dê um nome (ex: <em>nuvyon-banco</em>)<br>
-      3. Marque apenas <strong>repo</strong> (acesso a repositórios privados)<br>
-      4. Clique <strong>Generate token</strong> e copie o token gerado
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-      <div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">USUÁRIO DO GITHUB (owner) <span style="color:var(--accent);font-weight:400;text-transform:none">— só o nome, ex: erjinfo</span></div>
-        <input id="gh-owner" placeholder="ex: erjinfo" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none"
-          oninput="this.value=this.value.replace(/https?:\/\/(www\.)?(github\.com|github\.io)\/?/gi,'').replace(/\/.*/,'').trim()">
-        <div style="font-size:10px;color:var(--muted);margin-top:3px">❌ Não coloque a URL completa — só o nome do usuário</div>
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">NOME DO REPOSITÓRIO</div>
-        <input id="gh-repo" placeholder="ex: nuvyon-dados (deve ser privado)" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">PERSONAL ACCESS TOKEN</div>
-        <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;font-family:monospace">
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button onclick="ghTestAndSave()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 22px;font-weight:800;font-size:13px;cursor:pointer">✅ Testar e Salvar</button>
-      <button onclick="ghClearConfig();closeGhConfig();showLoginStatus('Configuração removida — modo local ativado','ok')" style="background:transparent;border:1px solid #
-	  
-	</body>
+</body>
 </html>
