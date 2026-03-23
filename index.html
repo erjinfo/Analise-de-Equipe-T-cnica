@@ -11053,188 +11053,781 @@ async function adminEditApiKey(idx) {
   var acao = nova.trim() ? 'configurada' : 'removida';
   dbLog('Drive API Key ' + acao + ' para: ' + users[idx].user);
   showAdminMsg('✅ Drive API Key ' + acao + ' para ' + users[idx].user);
+}
 
-} // <--- Fim da adminEditApiKey original. Cole o código abaixo:
 
-/* ══════════════════════════════════════════════════════════════════
-   NUVYON ULTIMATE CORE v20.0 - RESTAURAÇÃO DE EMERGÊNCIA
-   BI v10 + SYNC DRIVE + MENU AGRUPADO PROTEGIDO
-══════════════════════════════════════════════════════════════════ */
+// ═══════════════════════════════════════════════════════════════════════════
+// BI COMERCIAL — Motor Inline (Nuvyon v5)
+// superClean + FILIAL_MAP + renderBIComercial + Ranking da Verdade blindado
+// Garante que TODAS as vendedoras do CRM apareçam (mesmo com 0 vendas)
+// ═══════════════════════════════════════════════════════════════════════════
 
-(function(window, document) {
-    // Variáveis globais de configuração (usando var para evitar erro de redeclaração)
-    var DRIVE_K = 'AIzaSyBbLA8nzeIpnz5fOVZotTNwfezqDBFLnek';
-    var DRIVE_F = '1SGlZZyPglW181NBEHzxnUpOfXChUX6qR';
+/**
+ * superClean(str) — normalização máxima para comparação de vendedoras.
+ * Implementação exata conforme spec:
+ *   str.normalize('NFD')
+ *      .replace(/[\u0300-\u036f]/g, "")   → remove acentos
+ *      .replace(/[^a-zA-Z]/g, "")          → remove números, espaços, especiais
+ *      .toUpperCase()                       → MAIÚSCULAS
+ *
+ * Exemplos:
+ *   "9.0 Evellyn Café"  → "EVELLYNCAFE"
+ *   "8Leticia Carvalho" → "LETICIACARVALHO"
+ *   "Ana Paula Moraes"  → "ANAPAULAMORAES"
+ *   "Thais Moreira"     → "THAISMOREIRA"
+ *   "1 - Ana Paula"     → "ANAPAULA"
+ */
+function superClean(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z]/g, '')
+    .toUpperCase();
+}
 
-    var MAPA_ARQUIVOS = [
-        {r:/relatorio-de-ordens-de-servico(?!.*abertas)/i, tipo:'os', label:'OS Técnicas'},
-        {r:/relatorio-de-atendimentos/i, tipo:'at', label:'Atendimentos HubSoft'},
-        {r:/matrix|relatorio_atendimento_analitico/i, tipo:'matrix', label:'Matrix Analítico'},
-        {r:/relatorio-de-ordens.*abertas/i, tipo:'osab', label:'OS Abertas'},
-        {r:/relatorio_de_crm/i, tipo:'crm', label:'CRM Hubsoft'},
-        {r:/relatorio-de-servicos/i, tipo:'vendas', label:'Vendas Hubsoft'}
-    ];
+/**
+ * FILIAL_MAP_BI — dicionário canônico de vendedoras
+ * Chaves: superClean(padrão) → nome real exibido no dashboard
+ * Cobertura: filiais Matrix + variações de nome do CRM + prefixos numéricos
+ */
+const FILIAL_MAP_BI = {
+  // ── Tania (Filial Passos) ─────────────────────────────────────────────
+  'FILIALPASSOS'       : 'Tania',
+  'TANIA'              : 'Tania',
+  'TANIALEMOS'         : 'Tania',
+  // ── Victoria Schiavelli (Filial CB / Casa Branca) ─────────────────────
+  'FILIALCB'           : 'Victoria Schiavelli',
+  'FILIALCASABRANCA'   : 'Victoria Schiavelli',
+  'VICTORIA'           : 'Victoria Schiavelli',
+  'VICTORIASCHIAVELLI' : 'Victoria Schiavelli',
+  // ── Lavinia Martins (Filial Rio Pardo) ───────────────────────────────
+  'FILIALRIOPARDO'     : 'Lavinia Martins',
+  'LAVINIA'            : 'Lavinia Martins',
+  'LAVINIAMARTINS'     : 'Lavinia Martins',
+  // ── Thais Moreira (Filial Monte Santo) ──────────────────────────────
+  'FILIALMONTESANTO'   : 'Thais Moreira',
+  'THAIS'              : 'Thais Moreira',
+  'THAISMOREIRA'       : 'Thais Moreira',
+  // ── 9.0Evellyn Cafe (Filial Mogi) ────────────────────────────────────
+  'FILIALMOGI'         : '9.0Evellyn Cafe',
+  'EVELLYN'            : '9.0Evellyn Cafe',
+  'EVELLYNCAFE'        : '9.0Evellyn Cafe',
+  'EVELYNCAFE'         : '9.0Evellyn Cafe',   // variação comum de digitação
+  // ── 8Leticia Carvalho (Filial Caconde) ───────────────────────────────
+  'FILIALCACONDE'      : '8Leticia Carvalho',
+  'FILIALCACOND'       : '8Leticia Carvalho',
+  'LETICIA'            : '8Leticia Carvalho',
+  'LETICIACARVALHO'    : '8Leticia Carvalho',
+  // ── Ana Paula Moraes ─────────────────────────────────────────────────
+  // Presente no CRM como "Ana Paula", "1 - Ana Paula", "ANA PAULA MORAES"
+  'ANAPAULA'           : 'Ana Paula Moraes',
+  'ANAPAULAMORAES'     : 'Ana Paula Moraes',
+  'ANAPAULAMORAE'      : 'Ana Paula Moraes',
+};
 
-    // --- FORÇAR FUNÇÕES DE INTERFACE PARA O WINDOW ---
-    window.openUpload = function() { 
-        var el = document.getElementById('upload-overlay');
-        if(el) el.classList.add('open');
-    };
+const _BI_FILIAL_VALS = new Map(
+  Object.values(FILIAL_MAP_BI).map(v => [superClean(v), v])
+);
 
-    window.closeUpload = function() { 
-        var el = document.getElementById('upload-overlay');
-        if(el) el.classList.remove('open');
-    };
+/**
+ * resolveVendedoraBI(raw): resolve qualquer string de nome para o canônico.
+ * Usa superClean() em ambos os lados → insensível a acentos, números, espaços.
+ *
+ * Passos (ordem de tentativa):
+ *  1. Exact match: superClean(raw) === chave do FILIAL_MAP
+ *  2. Starts-with: superClean(raw) começa com a chave (≥4 chars)
+ *  3. Key starts-with: chave começa com superClean(raw) (≥5 chars)
+ *  4. Match no valor canônico (raw já é o nome real)
+ *  5. Substring: qualquer chave está contida em superClean(raw) (≥5 chars)
+ *  6. Fallback: remove prefixo numérico/separador (ex: "1 - Ana Paula" → "Ana Paula")
+ */
+function resolveVendedoraBI(raw) {
+  if (!raw || String(raw).trim() === '') return '';
+  const s  = String(raw).trim();
+  const sc = superClean(s);
+  if (!sc) return s;
 
-    window.showTab = function(id) {
-        // Esconde todos
-        var contents = document.getElementsByClassName('tab-content');
-        for(var i=0; i<contents.length; i++) {
-            contents[i].classList.remove('active');
-            contents[i].style.display = 'none';
-        }
-        // Desativa botões
-        var btns = document.querySelectorAll('.tab-btn, .tabgroup-item');
-        for(var j=0; j<btns.length; j++) btns[j].classList.remove('active');
+  // Passo 1 — match exato
+  for (const [k,v] of Object.entries(FILIAL_MAP_BI)) {
+    if (sc === superClean(k)) return v;
+  }
+  // Passo 2 — sc começa com chave
+  for (const [k,v] of Object.entries(FILIAL_MAP_BI)) {
+    const kc = superClean(k);
+    if (kc.length >= 4 && sc.startsWith(kc)) return v;
+  }
+  // Passo 3 — chave começa com sc
+  for (const [k,v] of Object.entries(FILIAL_MAP_BI)) {
+    const kc = superClean(k);
+    if (sc.length >= 5 && kc.startsWith(sc)) return v;
+  }
+  // Passo 4 — match no valor canônico
+  if (_BI_FILIAL_VALS.has(sc)) return _BI_FILIAL_VALS.get(sc);
+  for (const [vc,v] of _BI_FILIAL_VALS) {
+    if (vc.length >= 5 && sc.startsWith(vc)) return v;
+    if (sc.length >= 5 && vc.startsWith(sc)) return v;
+  }
+  // Passo 5 — chave CONTIDA em sc (ex: sc="ANAPAULAMORAES" contém "ANAPAULA")
+  for (const [k,v] of Object.entries(FILIAL_MAP_BI)) {
+    const kc = superClean(k);
+    if (kc.length >= 5 && sc.includes(kc)) return v;
+  }
+  // Passo 6 — remove prefixo numérico "1 - " "8" etc.
+  return s.replace(/^[\d\s.\-]+/, '').trim() || s;
+}
 
-        // Mostra o alvo
-        var target = document.getElementById('tab-content-' + id);
-        if(target) {
-            target.classList.add('active');
-            target.style.display = 'block';
-        }
-        var btn = document.getElementById('tab-' + id);
-        if(btn) btn.classList.add('active');
+/** normCPF: dígitos apenas, 11 últimos */
+function biNormCPF(v) {
+  const d = String(v||'').replace(/\D/g,'');
+  return d.length >= 11 ? d.slice(-11) : (d || null);
+}
 
-        if(id === 'bi-comercial') renderBIComercial();
-        if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
-    };
+/** categorizaMotivoBI: classifica crm_etapa em motivo de perda */
+function categorizaMotivoBI(etapa) {
+  const e = String(etapa||'').toUpperCase();
+  if (!e) return 'Não Informado';
+  if (e.includes('DESISTENCIA')&&e.includes('CONCORR')) return 'Desistência/Concorrência';
+  if (e.includes('DESISTENCIA')) return 'Desistência';
+  if (e.includes('CONCORR'))     return 'Concorrência';
+  if (e.includes('SEM VIABILIDADE')||e.includes('VIABILIDADE NEGATIVA')) return 'Sem Viabilidade';
+  if (e.includes('CREDITO')||e.includes('CRÉDITO')) return 'Crédito Negado';
+  if (e.includes('SEM RETORNO'))  return 'Sem Retorno';
+  if (e.includes('PRAZO'))        return 'Prazo';
+  if (e.includes('SEM INTERESSE'))return 'Sem Interesse';
+  if (e.includes('NEGOC'))        return 'Em Negociação';
+  if (e.includes('OUTROS'))       return 'Outros';
+  return etapa.length > 0 ? String(etapa).slice(0,30) : 'Não Informado';
+}
 
-    // --- MOTOR BI COMERCIAL v10.0 ---
-    window.renderBIComercial = function() {
-        var crm = STATE.rawCRM || [];
-        var vds = STATE.rawVendas || [];
-        var box = document.getElementById('bi-v5-container');
-        if(!box) return;
-        if(!crm.length) { box.innerHTML = '<div style="text-align:center;padding:100px;color:var(--muted)">Aguardando dados do Drive...</div>'; return; }
+// Estado do BI Comercial
+const _BI = {
+  vendRows: [],      // resultado do cruzamento por vendedora
+  allLeads: [],      // todos os leads CRM processados
+  filtroEnroladas: false,
+  chartPareto: null,
+  chartTags: null,
+};
 
-        var vMap = new Map();
-        vds.forEach(function(v) {
-            var cpf = String(v['cpf_cnpj'] || v['prospecto_cpf_cnpj'] || '').replace(/\D/g, '').slice(-11);
-            if(cpf) vMap.set(cpf, true);
-        });
-
-        var vend = new Map();
-        crm.forEach(function(l) {
-            var rN = l.usuario || l.vendedora || 'OUTROS';
-            var sc = String(rN).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toUpperCase();
-            if(!vend.has(sc)) vend.set(sc, { nome: rN, leads: 0, conv: 0, inst: 0 });
-            var v = vend.get(sc);
-            v.leads++;
-            if(String(l.status_prospecto || l.status || '').toLowerCase() === 'convertido') v.conv++;
-            var cpf = String(l.prospecto_cpf_cnpj || '').replace(/\D/g, '').slice(-11);
-            if(cpf && vMap.has(cpf)) v.inst++;
-        });
-
-        var rows = Array.from(vend.values()).sort(function(a,b){ return b.inst - a.inst; });
-        document.getElementById('bi-kpi-row').innerHTML = `
-            <div class="kpi"><div class="kpi-label">Leads</div><div class="kpi-value">${crm.length}</div></div>
-            <div class="kpi"><div class="kpi-label">Vendas Reais</div><div class="kpi-value" style="color:var(--green)">${rows.reduce((s,r)=>s+r.inst,0)}</div></div>
-            <div class="kpi"><div class="kpi-label">Equipe</div><div class="kpi-value">${rows.length}</div></div>`;
-
-        document.getElementById('bi-truth-body').innerHTML = rows.map(function(r, i) {
-            var tx = r.leads ? ((r.inst / r.leads) * 100).toFixed(1) : 0;
-            return `<tr><td>${i+1}</td><td style="font-weight:700">${r.nome}</td><td>${r.leads}</td><td>${r.conv}</td><td style="color:var(--green);font-weight:800">${r.inst}</td><td>${tx}%</td></tr>`;
-        }).join('');
-    };
-
-    // --- SYNC DRIVE TURBO ---
-    window.nuvyonCloudSync = async function() {
-        var msg = document.getElementById('cloud-sub-msg');
-        if(msg) msg.textContent = "⏳ Conectando Cloud...";
-        try {
-            var res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + DRIVE_F + "' in parents and trashed=false")}&key=${DRIVE_K}`);
-            var data = await res.json();
-            var files = data.files || [];
-            for (var m of MAPA_ARQUIVOS) {
-                var target = files.filter(function(x){ return m.r.test(x.name); }).sort(function(a,b){ return b.modifiedTime?.localeCompare(a.modifiedTime); })[0];
-                if(target) {
-                    if(msg) msg.textContent = "⬇️ " + m.label;
-                    var dl = await fetch(`https://www.googleapis.com/drive/v3/files/${target.id}?alt=media&key=${DRIVE_K}`);
-                    var blob = await dl.blob();
-                    var ext = target.name.split('.').pop().toLowerCase();
-                    var json = [];
-                    if(ext === 'csv') {
-                        var text = await blob.text();
-                        json = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
-                    } else {
-                        var wb = XLSX.read(await blob.arrayBuffer(), {type:'array'});
-                        json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
-                    }
-                    if(m.tipo==='os') STATE.rawOS = json;
-                    if(m.tipo==='at') STATE.rawAT = json;
-                    if(m.tipo==='matrix') STATE.relatorioAnalitico = json;
-                    if(m.tipo==='crm') STATE.rawCRM = json;
-                    if(m.tipo==='vendas') STATE.rawVendas = json;
-                    STATE.loaded[m.tipo] = true;
-                }
-            }
-            if(typeof _processRestoredState === 'function') _processRestoredState();
-            if(typeof renderAll === 'function') renderAll();
-            if(typeof renderBIComercial === 'function') renderBIComercial();
-            if(msg) msg.textContent = "✅ Dashboard Sincronizado!";
-        } catch(e){ if(msg) msg.textContent = "❌ Erro na Nuvem"; }
-    };
-
-    // --- MENU AGRUPADO RESILIENTE ---
-    window.buildGroupedTabbar = function() {
-        var tabbar = document.getElementById('tabbar');
-        if(!tabbar || typeof ABA_GRUPOS === 'undefined') return;
-        var activeBtn = tabbar.querySelector('.tab-btn.active') || tabbar.querySelector('.tabgroup-item.active');
-        var currentTab = activeBtn ? activeBtn.id.replace('tab-','') : 'gestao';
-        var html = '';
-        ABA_GRUPOS.forEach(function(g) {
-            var abasOk = (typeof SESSION !== 'undefined' && SESSION) ? g.abas.filter(function(id){ return SESSION.role === 'master' || (SESSION.abas && SESSION.abas.includes(id)); }) : g.abas;
-            if(!abasOk.length) return;
-            var isGActive = g.abas.includes(currentTab);
-            html += `<div class="tabgroup-wrap"><button class="tabgroup-btn ${isGActive?'active':''}" onclick="showTab('${abasOk[0]}')">${g.label} ▾</button><div class="tabgroup-dropdown">${abasOk.map(function(id){
-                var aba = ABAS.find(function(a){return a.id===id;});
-                return `<button class="tabgroup-item ${id===currentTab?'active':''}" onclick="showTab('${id}')" id="tab-${id}">${aba?aba.label:id}</button>`;
-            }).join('')}</div></div>`;
-        });
-        tabbar.innerHTML = html + (document.getElementById('tab-logoff')?.outerHTML || '');
-    };
-
-    // INICIALIZAÇÃO
-    window.addEventListener('load', function() {
-        var oldApply = window.applySession;
-        window.applySession = function() {
-            if(typeof oldApply === 'function') oldApply();
-            setTimeout(buildGroupedTabbar, 300);
-        };
-        if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
-        setTimeout(nuvyonCloudSync, 4000);
+// ── Upload rápido direto da aba BI ─────────────────────────────────────────
+async function biQuickUpload(tipo, input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const iconEl = document.getElementById('bi-slot-' + tipo + '-icon');
+  const nameEl = document.getElementById('bi-slot-' + tipo + '-name');
+  if (iconEl) iconEl.textContent = '⏳';
+  if (nameEl) nameEl.textContent = 'Lendo...';
+  try {
+    const rows = await readFileAsRows(file, {
+      raw: true,
+      delimiter: tipo === 'matrix' ? ';' : undefined,
     });
+    // Aplicar ao STATE igual ao handleFile
+    if      (tipo === 'crm')    { STATE.rawCRM=rows; pendingFiles.crm=rows; STATE.loaded.crm=true; }
+    else if (tipo === 'vendas') { STATE.rawVendas=rows; pendingFiles.vendas=rows; STATE.loaded.vendas=true; }
+    else if (tipo === 'matrix') { STATE.relatorioAnalitico=rows; pendingFiles.matrix=rows; STATE.loaded.matrix=true; }
+    else if (tipo === 'osab')   { STATE.rawOSAb=rows; STATE.rawOSAbertas=rows; pendingFiles.osab=rows; STATE.loaded.osab=true; }
+    if (iconEl) iconEl.textContent = '✅';
+    if (nameEl) nameEl.textContent = file.name.slice(0,28) + ' (' + rows.length + ')';
+    // Salvar no GitHub automaticamente se configurado
+    if (GH_SLOT_FILES[tipo] && typeof ghSaveSlot === 'function') {
+      ghSaveSlot(tipo, rows).catch(()=>{});
+    }
+    renderBIComercial();
+  } catch(e) {
+    if (iconEl) iconEl.textContent = '❌';
+    if (nameEl) nameEl.textContent = 'Erro: ' + e.message.slice(0,30);
+  }
+}
 
-    window.biLocalUpload = function(tipo, input) {
-        var file = input.files[0]; if(!file) return;
-        file.text().then(function(t) {
-            var data = Papa.parse(t, {header:true}).data;
-            if(tipo === 'crm') STATE.rawCRM = data;
-            if(tipo === 'vendas') STATE.rawVendas = data;
-            renderBIComercial();
-        });
+// Sincroniza ícones dos slots de upload da aba BI com o STATE actual
+function biSyncSlots() {
+  const slots = {
+    crm   : { data: STATE.rawCRM,               color:'#8B5CF6', icon:'💼' },
+    vendas: { data: STATE.rawVendas,             color:'#10B981', icon:'🛒' },
+    matrix: { data: STATE.relatorioAnalitico,    color:'#F59E0B', icon:'💬' },
+    osab  : { data: STATE.rawOSAb,               color:'#3B82F6', icon:'🔧' },
+  };
+  Object.entries(slots).forEach(([tipo, {data, icon}]) => {
+    const lbl = document.getElementById('bi-slot-' + tipo);
+    const ico = document.getElementById('bi-slot-' + tipo + '-icon');
+    const nm  = document.getElementById('bi-slot-' + tipo + '-name');
+    if (!lbl) return;
+    const loaded = data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0);
+    if (loaded) {
+      lbl.style.borderColor = slots[tipo].color + '88';
+      lbl.style.background  = slots[tipo].color + '11';
+      if (ico) ico.textContent = '✅';
+      if (nm)  nm.textContent  = Array.isArray(data) ? data.length + ' registros' : 'Carregado';
+    }
+  });
+}
+
+// ── Funil de Conversão ────────────────────────────────────────────────────
+function renderBIFunil(crmList, osabRaw, matrixRaw, vendasRaw) {
+  const el = document.getElementById('bi-funil');
+  const fonte = document.getElementById('bi-funil-fonte');
+  if (!el) return;
+
+  // Etapa 1 — Leads (CRM)
+  const totalLeads = crmList.length;
+
+  // Etapa 2 — Aceite / Primeiro Contato (Matrix Analítico)
+  // Conta CPFs do CRM que aparecem no Matrix com status de atendimento
+  let aceites = 0;
+  const cpfsCRM = new Set(crmList.map(l => l.cpf).filter(Boolean));
+  const mxContatos = new Set();
+  (matrixRaw||[]).forEach(r => {
+    const cpf = biNormCPF(r['CPF/CNPJ informado']||r['CPF/CNPJ']||r['CPF']||'');
+    const st  = String(r['Status']||r['status']||'').toLowerCase();
+    // Considera aceite: atendimentos concluídos/resolvidos no Matrix
+    if (cpf && cpfsCRM.has(cpf) && (st.includes('resolv') || st.includes('conclu') || st.includes('encerr') || !st || st === '')) {
+      mxContatos.add(cpf);
+    }
+  });
+  // Se Matrix não tem CPF, usar count de leads convertidos no CRM como proxy
+  aceites = mxContatos.size || crmList.filter(l => l.convertido).length;
+
+  // Etapa 3 — OS Abertas (instalação efetiva)
+  let instalados = 0;
+  const cpfsOsab = new Set();
+  (osabRaw||[]).forEach(r => {
+    const cpf = biNormCPF(r['prospecto_cpf_cnpj']||r['cpf_cnpj']||r['CPF']||r['cpf_cliente']||'');
+    const tipo = String(r['tipo_ordem_servico']||r['tipo']||'').toUpperCase();
+    // Conta OS de ativação (instalação nova)
+    if (cpf && cpfsCRM.has(cpf) && (tipo.includes('ATIVAC') || tipo.includes('INSTAL'))) {
+      cpfsOsab.add(cpf);
+    }
+  });
+  instalados = cpfsOsab.size || crmList.filter(l => l.instalados > 0).length;
+
+  // Etapa 4 — Vendas auditadas (Hubsoft Serviços)
+  let vendasConf = 0;
+  (vendasRaw||[]).forEach(r => {
+    const cpf = biNormCPF(r['cpf_cnpj']||r['CPF']||r['cpf']||'');
+    const st  = String(r['servico_status']||r['status']||'').toLowerCase();
+    if (cpf && cpfsCRM.has(cpf) && (st.includes('habilitado') || st.includes('ativo'))) {
+      vendasConf++;
+    }
+  });
+
+  // Calcular taxas de conversão
+  const pct = (a, b) => b > 0 ? Math.round(a/b*100) : 0;
+
+  const etapas = [
+    { label:'Leads',           n: totalLeads, cor:'#8B5CF6', icon:'💬',
+      desc: 'Total de prospectos no CRM', fonte: 'CRM Hubsoft' },
+    { label:'Aceite / Contato', n: aceites,   cor:'#F59E0B', icon:'🤝',
+      desc: mxContatos.size ? 'CPFs encontrados no Atendimento Analítico' : 'Leads Convertidos (proxy — carregue Matrix para exactidão)',
+      fonte: matrixRaw ? 'Matrix Chat' : 'CRM (proxy)' },
+    { label:'OS Abertas',      n: instalados, cor:'#3B82F6', icon:'🔧',
+      desc: cpfsOsab.size ? 'Leads com OS de ativação' : 'Estimativa — carregue OS Abertas',
+      fonte: osabRaw ? 'OS Abertas' : 'estimativa' },
+    { label:'Vendas Conf.',    n: vendasConf || instalados, cor:'#10B981', icon:'✅',
+      desc: vendasConf ? 'Serviços habilitados no Hubsoft com CPF cruzado' : 'Igual a OS Abertas — carregue Vendas Hubsoft',
+      fonte: vendasRaw ? 'Vendas Hubsoft' : 'OS Abertas' },
+  ];
+
+  // Renderizar funil
+  el.innerHTML = etapas.map((e, i) => {
+    const prev  = i > 0 ? etapas[i-1].n : e.n;
+    const conv  = pct(e.n, prev);
+    const width = totalLeads > 0 ? Math.max(20, Math.round(e.n / totalLeads * 100)) : 100;
+    const isProxy = e.fonte.includes('estimativa') || e.fonte.includes('proxy');
+    return `
+      <div style="flex:1;min-width:140px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 8px;position:relative">
+        ${i > 0 ? `<div style="position:absolute;left:-4px;top:28px;font-size:16px;color:var(--muted)">→</div>` : ''}
+        <div style="font-size:11px;font-weight:700;color:${e.cor};text-transform:uppercase;letter-spacing:.05em;text-align:center">${e.icon} ${e.label}</div>
+        <div style="background:${e.cor}22;border:2px solid ${e.cor}66;border-radius:10px;padding:12px 16px;width:100%;text-align:center;position:relative">
+          <div style="font-size:28px;font-weight:900;color:${e.cor};font-family:monospace;line-height:1">${e.n.toLocaleString('pt-BR')}</div>
+          ${i > 0 ? `<div style="font-size:10px;color:${conv>=50?'#10B981':conv>=20?'#F59E0B':'#EF4444'};font-weight:700;margin-top:2px">${conv}% da etapa anterior</div>` : `<div style="font-size:10px;color:var(--muted);margin-top:2px">100%</div>`}
+          <div style="background:var(--border);border-radius:3px;height:4px;margin-top:8px;overflow:hidden">
+            <div style="height:100%;background:${e.cor};border-radius:3px;width:${width}%;transition:width .6s"></div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--muted);text-align:center;line-height:1.4;max-width:130px">${e.desc}</div>
+        <div style="font-size:9px;background:${isProxy?'#F59E0B22':'var(--panel)'};color:${isProxy?'#F59E0B':'var(--muted)'};border-radius:4px;padding:1px 6px;border:1px solid ${isProxy?'#F59E0B44':'var(--border)'}">${isProxy?'⚠ ':''} ${e.fonte}</div>
+      </div>`;
+  }).join('');
+
+  // Fonte das fontes
+  const fontes = [];
+  if (crmList.length) fontes.push('CRM');
+  if (matrixRaw)      fontes.push('Matrix');
+  if (osabRaw)        fontes.push('OS Abertas');
+  if (vendasRaw)      fontes.push('Vendas Hubsoft');
+  if (fonte) fonte.textContent = 'Fontes activas: ' + (fontes.join(' · ') || '—');
+}
+
+/** renderBIComercial: ponto de entrada — chama quando CRM ou Vendas carregam */
+function renderBIComercial() {
+  const crmRaw    = STATE.rawCRM;
+  const vendasRaw = STATE.rawVendas;
+  const matrixRaw = STATE.relatorioAnalitico;
+  const osabRaw   = STATE.rawOSAb || STATE.rawOSAbertas;
+
+  console.log('[BI] renderBIComercial — CRM:', crmRaw ? crmRaw.length + ' rows' : 'null',
+              '| Vendas:', vendasRaw ? vendasRaw.length + ' rows' : 'null',
+              '| Matrix:', matrixRaw ? matrixRaw.length + ' rows' : 'null',
+              '| OS Abertas:', osabRaw ? osabRaw.length + ' rows' : 'null');
+
+  // Sincronizar ícones dos slots
+  biSyncSlots();
+
+  if (!crmRaw && !vendasRaw) {
+    const up   = document.getElementById('bi-upload-screen');
+    const dash = document.getElementById('bi-dashboard');
+    if (up)   { up.style.display   = 'flex'; }
+    if (dash) { dash.style.display = 'none'; }
+    return;
+  }
+
+  // Garantir que os elementos existem
+  const up   = document.getElementById('bi-upload-screen');
+  const dash = document.getElementById('bi-dashboard');
+
+  if (!dash) {
+    console.warn('[BI] bi-dashboard não encontrado — retry em 500ms');
+    setTimeout(renderBIComercial, 500);
+    return;
+  }
+
+  // Mostrar dashboard
+  if (up)   up.style.display   = 'none';
+  dash.style.display = 'block';
+
+  // ── Processar CRM ──────────────────────────────────────────────────────
+  const crmList = (crmRaw||[]).map(r => {
+    // IDENTIDADE: nome em cascata
+    // 1. nome_prospecto → 2. nome_cartao → 3. 'Cliente sem Nome'
+    // Conforme spec: "Se o nome no faturamento for vazio, use lead.nome_cartao"
+    const nomeProsp  = String(r['nome_prospecto']||r['Nome']||'').trim();
+    const nomeCartao = String(r['nome_cartao']  ||'').trim();
+    const nomeDisplay= nomeProsp || nomeCartao || 'Cliente sem Nome';
+    const cpfN = biNormCPF(r['prospecto_cpf_cnpj']||r['cpf_cnpj']||r['CPF']||'');
+    const usuBruto = String(r['usuario']||r['vendedora']||'');
+    // Resolve nome real via FILIAL_MAP e superClean
+    const usuResolvido = resolveVendedoraBI(usuBruto);
+    return {
+      nome       : nomeDisplay,
+      cpf        : cpfN,
+      usuario    : usuResolvido || usuBruto,     // nome real ou original
+      usuSC      : superClean(usuResolvido || usuBruto),  // chave de agrupamento
+      status     : String(r['status_prospecto']||r['status']||'').trim(),
+      etapa      : String(r['crm_etapa']||r['etapa']||''),
+      tag        : String(r['tag']||''),
+      convertido : (String(r['status_prospecto']||r['status']||'').trim()) === 'Convertido',
     };
-})(window, document);
+  });
+
+  // ── Índice Hubsoft Vendas — CPF → row ──────────────────────────────────
+  const VendasAuditadas = new Map(); // cpf → row Hubsoft
+  const vendVendMap     = new Map(); // superClean(vendedor) → count instalados
+  (vendasRaw||[]).forEach(r => {
+    const cpfN = biNormCPF(r['cpf_cnpj']||r['CPF']||r['cpf']||'');
+    const st   = String(r['servico_status']||r['status']||'').toLowerCase();
+    const isAt = st.includes('habilitado') || st.includes('aguardando instala');
+    const vendBruto = String(r['vendedor']||r['vendedora']||'');
+    const vendRes   = resolveVendedoraBI(vendBruto) || vendBruto;
+    const vendSC    = superClean(vendRes);
+    if (cpfN && isAt) VendasAuditadas.set(cpfN, { ...r, vendSC });
+    if (vendSC) vendVendMap.set(vendSC, (vendVendMap.get(vendSC)||0) + (isAt?1:0));
+  });
+
+  // ── Índice Matrix por CPF (agilidade WhatsApp) ─────────────────────────
+  const mxByCpf = new Map();
+  (matrixRaw||[]).forEach(r => {
+    const cpfRaw = biNormCPF(r['CPF/CNPJ informado']||r['CPF/CNPJ']||r['CPF']||'');
+    if (cpfRaw) mxByCpf.set(cpfRaw, r);
+  });
+
+  // ── Agrupamento por vendedora (TODAS do CRM) ───────────────────────────
+  // REGRA: percorre todos os registros → nenhuma vendedora zerada é omitida
+  const vendMap = new Map(); // usuSC → { usuario, leads:[], instalados:0, gap:0 }
+
+  crmList.forEach(lead => {
+    const sc = lead.usuSC || '__SEM_VENDEDORA__';
+    if (!vendMap.has(sc))
+      vendMap.set(sc, { usuario: lead.usuario, sc, leads:[], instalados:0 });
+    vendMap.get(sc).leads.push(lead);
+  });
+
+  // Cruzar instalados Hubsoft por CPF dos leads de cada vendedora
+  vendMap.forEach((v, sc) => {
+    v.leads.forEach(lead => {
+      if (lead.cpf && VendasAuditadas.has(lead.cpf)) v.instalados++;
+    });
+    // Também somar instalados Hubsoft atribuídos diretamente ao vendedor
+    const hubInstVend = vendVendMap.get(sc) || 0;
+    // Usar o maior entre CPF-matched e atribuição direta no Hubsoft
+    v.instalados = Math.max(v.instalados, hubInstVend);
+  });
+
+  // Construir linhas do ranking
+  const rows = [];
+  vendMap.forEach((v, sc) => {
+    if (sc === '__SEM_VENDEDORA__') return; // REGRA 3: omite só se nome vazio
+    const totalCRM   = v.leads.length;
+    const convCRM    = v.leads.filter(l => l.convertido).length;
+    const instalados = v.instalados;
+    const gap        = Math.max(0, convCRM - instalados);
+    const taxaReal   = totalCRM ? +(instalados/totalCRM*100).toFixed(1) : 0;
+    const taxaCRM    = totalCRM ? +(convCRM/totalCRM*100).toFixed(1) : 0;
+    // Enrolação: em Negociação > 7 dias (aproximação sem data_cadastro)
+    const enrolados  = v.leads.filter(l => /NEGOC|CONTATO|CAPTAC/i.test(l.etapa)).length;
+    rows.push({ usuario:v.usuario, sc, totalCRM, convCRM, instalados, gap, taxaReal, taxaCRM, enrolados });
+  });
+
+  rows.sort((a,b) => b.instalados - a.instalados || b.convCRM - a.convCRM);
+  _BI.vendRows = rows;
+  _BI.allLeads = crmList;
+
+  // Renderizar funil com todas as fontes disponíveis
+  renderBIFunil(crmList, osabRaw, matrixRaw, vendasRaw);
+
+  biRenderKPIs(rows, crmList, VendasAuditadas);
+  biRenderRanking(rows);
+  biRenderPareto(crmList);
+  biRenderTags(crmList);
+}
+
+function biFiltrarEnroladas() {
+  _BI.filtroEnroladas = !_BI.filtroEnroladas;
+  const btn = document.getElementById('bi-btn-enrol');
+  if (btn) {
+    btn.style.background = _BI.filtroEnroladas ? 'rgba(245,158,11,.4)' : 'rgba(245,158,11,.15)';
+    btn.textContent = _BI.filtroEnroladas ? '⏰ Enroladas ✓' : '⏰ Enroladas';
+  }
+  const filtradas = _BI.filtroEnroladas
+    ? _BI.vendRows.filter(r => r.enrolados > 0)
+    : _BI.vendRows;
+  biRenderRanking(filtradas);
+}
+
+function biRenderKPIs(rows, leads, VA) {
+  const el = document.getElementById('bi-kpis');
+  if (!el) return;
+  const totalLeads  = leads.length;
+  const totalConvCRM= rows.reduce((s,r)=>s+r.convCRM,0);
+  const totalInst   = rows.reduce((s,r)=>s+r.instalados,0);
+  const totalGap    = rows.reduce((s,r)=>s+r.gap,0);
+  const taxa        = totalLeads ? (totalInst/totalLeads*100).toFixed(1) : '0.0';
+  const vendCount   = rows.length;
+  const enroladasCt = rows.filter(r=>r.taxaReal<10&&r.totalCRM>=3).length;
+
+  const kpis = [
+    { l:'Total Leads (CRM)',      v:totalLeads,   c:'var(--blue)',   i:'💬' },
+    { l:'Convertidos (CRM)',      v:totalConvCRM, c:'var(--purple)', i:'📝' },
+    { l:'Vendas Instaladas ✓',    v:totalInst,    c:'var(--green)',  i:'✅', s:'CPF no Hubsoft + status ativo' },
+    { l:'Taxa de Conversão Real', v:taxa+'%',     c:'var(--accent)', i:'📈' },
+    { l:'Gap (CRM s/ Hubsoft)',   v:totalGap,     c:'var(--red)',    i:'⚠️', s:'Inconsistências' },
+    { l:'Vendedoras',             v:vendCount,    c:'var(--yellow)', i:'👩', s:`${enroladasCt} com <10% real` },
+  ];
+
+  el.innerHTML = kpis.map(k=>`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${k.c};opacity:.6"></div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px">${k.i} ${k.l}</div>
+      <div style="font-size:26px;font-weight:800;color:${k.c};font-family:var(--font-head,monospace);line-height:1">${k.v}</div>
+      ${k.s?`<div style="font-size:10px;color:var(--muted);margin-top:3px">${k.s}</div>`:''}
+    </div>`).join('');
+}
+
+function biRenderRanking(rows) {
+  const thead = document.getElementById('bi-ranking-head');
+  const tbody = document.getElementById('bi-ranking-tbody');
+  const sub   = document.getElementById('bi-ranking-sub');
+  const badge = document.getElementById('bi-inconsist-badge');
+  if (!thead||!tbody) return;
+
+  const totalInconsist = rows.reduce((s,r)=>s+r.gap,0);
+  if (sub)   sub.textContent  = `${rows.length} vendedoras · dados ao vivo`;
+  if (badge) badge.innerHTML  = totalInconsist > 0
+    ? `<span style="background:rgba(239,68,68,.2);color:#EF4444;border:1px solid rgba(239,68,68,.4);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;animation:pulse-border 2s infinite">⚠️ ${totalInconsist} inconsistências</span>`
+    : `<span style="background:rgba(16,185,129,.15);color:#10B981;border:1px solid rgba(16,185,129,.3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700">✅ Auditoria OK</span>`;
+
+  const cols = ['#','Vendedora (Nome Real)','Leads CRM','Convertidos CRM','Instalados Hubsoft ✓','Taxa Real %','Gap','Enrolação','Status'];
+  thead.innerHTML = cols.map(c=>`<th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border)">${c}</th>`).join('');
+
+  tbody.innerHTML = rows.map((r,i) => {
+    const posC  = i===0?'background:rgba(245,158,11,.2);color:#F59E0B':i===1?'background:rgba(156,163,175,.15);color:#9CA3AF':i===2?'background:rgba(249,115,22,.15);color:#F97316':'background:rgba(31,41,55,.6);color:#6B7280';
+    const isAlert = r.taxaReal<10 && r.totalCRM>=3;
+    const hasGap  = r.gap > 0;
+    const tC = r.taxaReal>=30?'#10B981':r.taxaReal>=10?'#F59E0B':'#EF4444';
+    const gapB = hasGap
+      ? `<span style="background:rgba(239,68,68,.2);color:#EF4444;border:1px solid rgba(239,68,68,.4);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">+${r.gap}</span>`
+      : `<span style="background:rgba(16,185,129,.15);color:#10B981;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">OK</span>`;
+    const enrB = r.enrolados>0
+      ? `<span style="background:rgba(245,158,11,.2);color:#F59E0B;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">${r.enrolados}</span>`
+      : `<span style="color:var(--muted)">—</span>`;
+    const statB = hasGap
+      ? `<span style="background:rgba(239,68,68,.15);color:#EF4444;border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">Inconsistência</span>`
+      : isAlert ? `<span style="background:rgba(245,158,11,.15);color:#F59E0B;border:1px solid rgba(245,158,11,.3);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">Baixo Desempenho</span>`
+                : `<span style="background:rgba(16,185,129,.1);color:#10B981;border:1px solid rgba(16,185,129,.25);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">Auditada ✓</span>`;
+    const rowBg = (isAlert||hasGap) ? 'background:rgba(239,68,68,.04)' : '';
+    return `<tr style="${rowBg}">
+      <td style="padding:9px 12px"><div style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;${posC}">${i+1}</div></td>
+      <td style="padding:9px 12px;font-weight:700;color:${isAlert?'#EF4444':'var(--text)'}">${r.usuario}</td>
+      <td style="padding:9px 12px;color:var(--muted2)">${r.totalCRM}</td>
+      <td style="padding:9px 12px;color:#3B82F6">${r.convCRM}</td>
+      <td style="padding:9px 12px;color:#10B981;font-weight:800">${r.instalados}</td>
+      <td style="padding:9px 12px"><span style="background:${tC}22;color:${tC};border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${r.taxaReal}%</span></td>
+      <td style="padding:9px 12px">${gapB}</td>
+      <td style="padding:9px 12px">${enrB}</td>
+      <td style="padding:9px 12px">${statB}</td>
+    </tr>`;
+  }).join('');
+}
+
+function biRenderPareto(leads) {
+  const perdidos = leads.filter(l => l.status==='Lead Perdido'||(!l.convertido&&l.status!=='Convertido'&&l.etapa));
+  if (!perdidos.length) return;
+  const byM = {};
+  perdidos.forEach(l => { const m=categorizaMotivoBI(l.etapa); byM[m]=(byM[m]||0)+1; });
+  const sorted = Object.entries(byM).sort((a,b)=>b[1]-a[1]);
+  const total  = sorted.reduce((s,[,v])=>s+v,0);
+  let acum=0;
+  const data = sorted.map(([m,v])=>{ acum+=v; return { m, v, pct:+(acum/total*100).toFixed(1) }; });
+  const limite80 = data.findIndex(d=>d.pct>=80);
+
+  const ctx = document.getElementById('bi-chart-pareto');
+  if (!ctx) return;
+  if (_BI.chartPareto) { _BI.chartPareto.destroy(); _BI.chartPareto=null; }
+  _BI.chartPareto = new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:data.map(d=>d.m.length>18?d.m.slice(0,16)+'…':d.m),
+      datasets:[
+        { type:'bar',  label:'Perdidos', data:data.map(d=>d.v),
+          backgroundColor:data.map((_,i)=>i<=limite80?'rgba(239,68,68,.7)':'rgba(107,114,128,.35)'),
+          borderColor:data.map((_,i)=>i<=limite80?'#EF4444':'#6B7280'), borderWidth:1, borderRadius:4, yAxisID:'y' },
+        { type:'line', label:'% Acum.',  data:data.map(d=>d.pct),
+          borderColor:'#F59E0B', backgroundColor:'transparent', pointBackgroundColor:'#F59E0B', pointRadius:3, tension:.2, yAxisID:'y2' }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{labels:{color:'#9CA3AF',font:{size:10}}},
+        tooltip:{ backgroundColor:'#111827', titleColor:'#F1F5F9', bodyColor:'#9CA3AF', padding:8 }},
+      scales:{ x:{ticks:{color:'#6B7280',font:{size:9},maxRotation:40},grid:{color:'rgba(31,41,55,.4)'}},
+        y:{ticks:{color:'#EF4444',font:{size:9}},grid:{color:'rgba(31,41,55,.3)'}},
+        y2:{position:'right',min:0,max:100,ticks:{color:'#F59E0B',font:{size:9},callback:v=>v+'%'},grid:{display:false}} } }
+  });
+}
+
+function biRenderTags(leads) {
+  const byTag = {};
+  leads.forEach(l => {
+    const t = l.tag||'Sem Tag';
+    if (!byTag[t]) byTag[t]={leads:0,conv:0};
+    byTag[t].leads++;
+    if (l.convertido) byTag[t].conv++;
+  });
+  const data = Object.entries(byTag).sort((a,b)=>b[1].conv-a[1].conv).slice(0,10);
+  const ctx  = document.getElementById('bi-chart-tags');
+  if (!ctx) return;
+  if (_BI.chartTags) { _BI.chartTags.destroy(); _BI.chartTags=null; }
+  _BI.chartTags = new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:data.map(([t])=>t.length>16?t.slice(0,14)+'…':t),
+      datasets:[
+        { label:'Leads',       data:data.map(([,v])=>v.leads), backgroundColor:'rgba(59,130,246,.25)', borderColor:'#3B82F6', borderWidth:1, borderRadius:4 },
+        { label:'Convertidos', data:data.map(([,v])=>v.conv),  backgroundColor:'rgba(0,229,195,.7)',   borderColor:'#00E5C3', borderWidth:1, borderRadius:4 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{labels:{color:'#9CA3AF',font:{size:10}}},
+        tooltip:{ backgroundColor:'#111827', titleColor:'#F1F5F9', bodyColor:'#9CA3AF', padding:8 }},
+      scales:{ x:{ticks:{color:'#6B7280',font:{size:9},maxRotation:40},grid:{color:'rgba(31,41,55,.3)'}},
+               y:{ticks:{color:'#6B7280',font:{size:9}},grid:{color:'rgba(31,41,55,.3)'}} } }
+  });
+}
+
+function biExportarCSV() {
+  const rows = _BI.filtroEnroladas
+    ? _BI.vendRows.filter(r=>r.enrolados>0)
+    : _BI.vendRows;
+  if (!rows.length) return;
+  const hdrs = ['Vendedora','Leads CRM','Convertidos CRM','Instalados Hubsoft','Taxa Real %','Gap','Enrolação'];
+  const lines = [hdrs.join(',')];
+  rows.forEach(r => lines.push([r.usuario,r.totalCRM,r.convCRM,r.instalados,r.taxaReal,r.gap,r.enrolados].join(',')));
+  const blob = new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'),{href:url,download:'bi_ranking_verdade.csv'});
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+
+// ── buildGroupedTabbar (Tarefa 4) — gera tabbar com grupos dropdown ────────
+function buildGroupedTabbar() {
+  const tabbar = document.getElementById('tabbar');
+  if (!tabbar) return;
+  if (typeof ABA_GRUPOS === 'undefined') return;
+
+  // Descobrir aba atualmente ativa (mantém contexto)
+  const activeBtn = tabbar.querySelector('.tab-btn.active');
+  const currentTab = activeBtn ? (activeBtn.id||'').replace('tab-','') : 'gestao';
+
+  // Limpar tabbar mantendo o botão de logout
+  const logoff = document.getElementById('tab-logoff');
+
+  // Reconstruir com grupos
+  let html = '';
+  ABA_GRUPOS.forEach(grupo => {
+    const abas = grupo.abas;
+    // Verificar RBAC — só mostrar se usuário tem acesso a pelo menos uma aba do grupo
+    const abasAcessiveis = (typeof _USERS_CACHE !== 'undefined' && _SESSION)
+      ? abas.filter(id => {
+          const user = _USERS_CACHE.find(u => u.user === _SESSION.user);
+          return !user || !user.abas || user.abas.includes(id);
+        })
+      : abas;
+    if (!abasAcessiveis.length) return;
+
+    const isGroupActive = abas.includes(currentTab);
+    const firstAba = abasAcessiveis[0];
+
+    html += `<div class="tabgroup-wrap">
+      <button class="tabgroup-btn${isGroupActive?' active':''}" onclick="showTab('${firstAba}')"
+              id="tabgroup-${grupo.id}">
+        ${grupo.label} <span style="font-size:9px;opacity:.6">▾</span>
+      </button>
+      <div class="tabgroup-dropdown">
+        ${abasAcessiveis.map(id => {
+          const aba = ABAS.find(a=>a.id===id);
+          if (!aba) return '';
+          return `<button class="tabgroup-item${id===currentTab?' active':''}"
+                    onclick="showTab('${id}')" id="tab-${id}">${aba.label}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  // Reconstruir tabbar
+  tabbar.innerHTML = html;
+  if (logoff) tabbar.appendChild(logoff);
+}
+
+// Chamar buildGroupedTabbar após applySession
+const _origApplySession = typeof applySession === 'function' ? applySession : null;
+
+// ── Scroll top button
+
+// ── Configurações GitHub (aba config) ─────────────────────────────────────
+function cfgSaveGitHub() {
+  const owner = document.getElementById('cfg-gh-owner')?.value.trim();
+  const repo  = document.getElementById('cfg-gh-repo')?.value.trim();
+  const token = document.getElementById('cfg-gh-token')?.value.trim();
+  const msg   = document.getElementById('cfg-gh-msg');
+  if (!owner || !repo || !token) {
+    if (msg) { msg.textContent = '❌ Preencha todos os campos'; msg.style.color='var(--red)'; }
+    return;
+  }
+  ghSetConfig({ owner, repo, token });
+  if (msg) { msg.textContent = '✅ Configuração salva!'; msg.style.color='var(--green)'; }
+  // Testar conexão imediatamente
+  ghLoadAll(true).then(n => {
+    if (msg) msg.textContent = n > 0
+      ? `✅ Conectado! ${n} arquivo(s) encontrados no repo.`
+      : '✅ Conectado! Sem arquivos ainda — serão criados no próximo upload.';
+  }).catch(() => {
+    if (msg) { msg.textContent = '⚠️ Token salvo mas falha ao conectar. Verifique permissões.'; msg.style.color='var(--yellow)'; }
+  });
+}
+
+function cfgClearGitHub() {
+  ghClearConfig();
+  ['cfg-gh-owner','cfg-gh-repo','cfg-gh-token'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const msg = document.getElementById('cfg-gh-msg');
+  if (msg) { msg.textContent = 'Configuração removida.'; msg.style.color='var(--muted)'; }
+}
+
+// Preencher campos de config quando a aba é aberta
+function _initConfigTab() {
+  const cfg = ghGetConfig();
+  if (!cfg) return;
+  const o = document.getElementById('cfg-gh-owner');
+  const r = document.getElementById('cfg-gh-repo');
+  if (o) o.value = cfg.owner  || '';
+  if (r) r.value = cfg.repo   || '';
+  // Token não é exibido por segurança (só indica que existe)
+  const t = document.getElementById('cfg-gh-token');
+  if (t && cfg.token) t.placeholder = '••••••••••••••••••• (configurado)';
+}
+
 </script>
 
-<!-- MODAL CLIENTE FIX -->
-<div id="cli-modal-overlay" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:#000a;z-index:3000;overflow-y:auto;padding:24px 16px">
-  <div id="cli-modal-box" style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:760px;margin:0 auto;padding:22px;overflow:hidden">
-    <div id="cli-modal-nome" style="font-size:18px;font-weight:800;color:var(--text)">Ficha do Cliente</div>
-    <div id="cli-modal-sub" style="font-size:12px;color:var(--muted)">Histórico detalhado</div>
-    <div id="cli-hist-content" style="margin-top:20px"></div>
+<!-- ═══════════════ MODAL CLIENTE ═══════════════ -->
+<div id="cli-modal-overlay" onclick="closeClienteModal(event)" style="display:none;position:fixed;inset:0;background:#000a;z-index:3000;overflow-y:auto;padding:24px 16px">
+  <div id="cli-modal-box" style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:760px;margin:0 auto;padding:0;overflow:hidden">
+    <!-- Header -->
+    <div id="cli-modal-header" style="background:var(--card);padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Ficha do Cliente</div>
+        <div id="cli-modal-nome" style="font-size:17px;font-weight:800;color:var(--text)"></div>
+        <div id="cli-modal-sub" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="cli-modal-badge"></div>
+        <button onclick="document.getElementById('cli-modal-overlay').style.display='none'" style="background:var(--border);border:none;color:var(--muted);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px">✕</button>
+      </div>
+    </div>
+    <!-- KPIs -->
+    <div id="cli-modal-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)"></div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--border)">
+      <button id="ctab-hist" onclick="showCliTab('hist')" class="modal-tab active" style="flex:1;padding:11px;font-size:12px;font-weight:700">📋 Últimos Atendimentos</button>
+      <button id="ctab-analise" onclick="showCliTab('analise')" class="modal-tab" style="flex:1;padding:11px;font-size:12px;font-weight:700">🧠 Análise e Ação</button>
+    </div>
+    <!-- Pane: Histórico -->
+    <div id="cpane-hist" style="padding:18px;display:block">
+      <div id="cli-hist-content"></div>
+    </div>
+    <!-- Pane: Análise -->
+    <div id="cpane-analise" style="padding:18px;display:none">
+      <div id="cli-analise-content"></div>
+    </div>
   </div>
 </div>
-</body>
-</html>
+
+<!-- GITHUB CONFIG MODAL -->
+<div id="gh-config-modal" style="position:fixed;inset:0;background:#000000cc;z-index:10000;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;width:480px;max-width:96vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <h3 style="font-size:15px;font-weight:800;color:var(--accent)">☁ Configurar GitHub como banco de dados</h3>
+      <button onclick="closeGhConfig()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:4px 10px;cursor:pointer;font-size:12px">✕</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Os usuários serão salvos no arquivo <code style="background:var(--panel);padding:1px 5px;border-radius:3px">nuvyon_banco.json</code> no seu repositório privado do GitHub.
+      Qualquer pessoa que abrir o dashboard vai ler do mesmo lugar. Configure <strong>apenas na sua máquina</strong> (admin).
+    </p>
+    <div style="background:var(--panel);border-radius:9px;padding:14px;margin-bottom:16px;font-size:11px;color:var(--muted);line-height:1.7">
+      <strong style="color:var(--text)">Como obter o token:</strong><br>
+      1. Acesse <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/tokens/new</a><br>
+      2. Dê um nome (ex: <em>nuvyon-banco</em>)<br>
+      3. Marque apenas <strong>repo</strong> (acesso a repositórios privados)<br>
+      4. Clique <strong>Generate token</strong> e copie o token gerado
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">USUÁRIO DO GITHUB (owner) <span style="color:var(--accent);font-weight:400;text-transform:none">— só o nome, ex: erjinfo</span></div>
+        <input id="gh-owner" placeholder="ex: erjinfo" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none"
+          oninput="this.value=this.value.replace(/https?:\/\/(www\.)?(github\.com|github\.io)\/?/gi,'').replace(/\/.*/,'').trim()">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">❌ Não coloque a URL completa — só o nome do usuário</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">NOME DO REPOSITÓRIO</div>
+        <input id="gh-repo" placeholder="ex: nuvyon-dados (deve ser privado)" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">PERSONAL ACCESS TOKEN</div>
+        <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;font-family:monospace">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="ghTestAndSave()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 22px;font-weight:800;font-size:13px;cursor:pointer">✅ Testar e Salvar</button>
+      <button onclick="ghClearConfig();closeGhConfig();showLoginStatus('Configuração removida — modo local ativado','ok')" style="background:transparent;border:1px solid #
