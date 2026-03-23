@@ -11054,70 +11054,64 @@ async function adminEditApiKey(idx) {
   dbLog('Drive API Key ' + acao + ' para: ' + users[idx].user);
   showAdminMsg('✅ Drive API Key ' + acao + ' para ' + users[idx].user);
 
-} // <--- Fim da adminEditApiKey. O código abaixo entra aqui:
+} // <--- Fim da adminEditApiKey original. Cole o código abaixo:
 
 /* ══════════════════════════════════════════════════════════════════
-   NUVYON ULTIMATE ENGINE v19.0 - RECUPERAÇÃO TOTAL
-   BI v10 + SYNC DRIVE + MENU AGRUPADO RESILIENTE
+   NUVYON ULTIMATE CORE v20.0 - RESTAURAÇÃO DE EMERGÊNCIA
+   BI v10 + SYNC DRIVE + MENU AGRUPADO PROTEGIDO
 ══════════════════════════════════════════════════════════════════ */
 
-// 1. CONFIGURAÇÕES (Usando VAR para evitar erro de redeclaração)
-var NUV_KEY = 'AIzaSyBbLA8nzeIpnz5fOVZotTNwfezqDBFLnek';
-var NUV_FID = '1SGlZZyPglW181NBEHzxnUpOfXChUX6qR';
+(function(window, document) {
+    // Variáveis globais de configuração (usando var para evitar erro de redeclaração)
+    var DRIVE_K = 'AIzaSyBbLA8nzeIpnz5fOVZotTNwfezqDBFLnek';
+    var DRIVE_F = '1SGlZZyPglW181NBEHzxnUpOfXChUX6qR';
 
-var NUV_MAPA = [
-    {r:/relatorio-de-ordens-de-servico(?!.*abertas)/i, tipo:'os', label:'OS Técnicas'},
-    {r:/relatorio-de-atendimentos/i,                   tipo:'at', label:'Atendimentos HubSoft'},
-    {r:/matrix|relatorio_atendimento_analitico/i,      tipo:'matrix', label:'Matrix Analítico'},
-    {r:/relatorio-de-ordens.*abertas/i,                tipo:'osab', label:'OS Abertas'},
-    {r:/relatorio_de_produtividade/i,                  tipo:'prod', label:'Produtividade'},
-    {r:/detalhamento_de_pesquisa(?!.*fone)/i,          tipo:'nps', label:'NPS Chat'},
-    {r:/relatorio_de_crm/i,                            tipo:'crm', label:'CRM Hubsoft'},
-    {r:/relatorio-de-servicos/i,                       tipo:'vendas', label:'Vendas Hubsoft'}
-];
+    var MAPA_ARQUIVOS = [
+        {r:/relatorio-de-ordens-de-servico(?!.*abertas)/i, tipo:'os', label:'OS Técnicas'},
+        {r:/relatorio-de-atendimentos/i, tipo:'at', label:'Atendimentos HubSoft'},
+        {r:/matrix|relatorio_atendimento_analitico/i, tipo:'matrix', label:'Matrix Analítico'},
+        {r:/relatorio-de-ordens.*abertas/i, tipo:'osab', label:'OS Abertas'},
+        {r:/relatorio_de_crm/i, tipo:'crm', label:'CRM Hubsoft'},
+        {r:/relatorio-de-servicos/i, tipo:'vendas', label:'Vendas Hubsoft'}
+    ];
 
-// 2. FUNÇÕES DE INTERFACE GLOBAIS
-window.openUpload = function() { 
-    var overlay = document.getElementById('upload-overlay');
-    if(overlay) overlay.classList.add('open'); 
-};
+    // --- FORÇAR FUNÇÕES DE INTERFACE PARA O WINDOW ---
+    window.openUpload = function() { 
+        var el = document.getElementById('upload-overlay');
+        if(el) el.classList.add('open');
+    };
 
-window.closeUpload = function() { 
-    var overlay = document.getElementById('upload-overlay');
-    if(overlay) overlay.classList.remove('open'); 
-};
+    window.closeUpload = function() { 
+        var el = document.getElementById('upload-overlay');
+        if(el) el.classList.remove('open');
+    };
 
-window.showTab = function(t) {
-    console.log("Navegando para:", t);
-    // Esconder todos os conteúdos
-    var contents = document.querySelectorAll('.tab-content');
-    for(var i=0; i<contents.length; i++) {
-        contents[i].classList.remove('active');
-        contents[i].style.display = 'none';
-    }
-    // Remover active de todos os botões
-    var btns = document.querySelectorAll('.tab-btn, .tabgroup-item, .tabgroup-btn');
-    for(var j=0; j<btns.length; j++) {
-        btns[j].classList.remove('active');
-    }
-    // Mostrar o alvo
-    var target = document.getElementById('tab-content-' + t);
-    if(target) {
-        target.classList.add('active');
-        target.style.display = 'block';
-    }
-    // Ativar botão
-    var btn = document.getElementById('tab-' + t);
-    if(btn) btn.classList.add('active');
+    window.showTab = function(id) {
+        // Esconde todos
+        var contents = document.getElementsByClassName('tab-content');
+        for(var i=0; i<contents.length; i++) {
+            contents[i].classList.remove('active');
+            contents[i].style.display = 'none';
+        }
+        // Desativa botões
+        var btns = document.querySelectorAll('.tab-btn, .tabgroup-item');
+        for(var j=0; j<btns.length; j++) btns[j].classList.remove('active');
 
-    // Funções específicas
-    if(t === 'bi-comercial' && typeof renderBIComercial === 'function') renderBIComercial();
-    if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
-};
+        // Mostra o alvo
+        var target = document.getElementById('tab-content-' + id);
+        if(target) {
+            target.classList.add('active');
+            target.style.display = 'block';
+        }
+        var btn = document.getElementById('tab-' + id);
+        if(btn) btn.classList.add('active');
 
-// 3. MOTOR BI COMERCIAL v10.0 (ULTRA RÁPIDO)
-window.renderBIComercial = function() {
-    try {
+        if(id === 'bi-comercial') renderBIComercial();
+        if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
+    };
+
+    // --- MOTOR BI COMERCIAL v10.0 ---
+    window.renderBIComercial = function() {
         var crm = STATE.rawCRM || [];
         var vds = STATE.rawVendas || [];
         var box = document.getElementById('bi-v5-container');
@@ -11125,13 +11119,13 @@ window.renderBIComercial = function() {
         if(!crm.length) { box.innerHTML = '<div style="text-align:center;padding:100px;color:var(--muted)">Aguardando dados do Drive...</div>'; return; }
 
         var vMap = new Map();
-        vds.forEach(v => {
+        vds.forEach(function(v) {
             var cpf = String(v['cpf_cnpj'] || v['prospecto_cpf_cnpj'] || '').replace(/\D/g, '').slice(-11);
             if(cpf) vMap.set(cpf, true);
         });
 
         var vend = new Map();
-        crm.forEach(l => {
+        crm.forEach(function(l) {
             var rN = l.usuario || l.vendedora || 'OUTROS';
             var sc = String(rN).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toUpperCase();
             if(!vend.has(sc)) vend.set(sc, { nome: rN, leads: 0, conv: 0, inst: 0 });
@@ -11142,98 +11136,103 @@ window.renderBIComercial = function() {
             if(cpf && vMap.has(cpf)) v.inst++;
         });
 
-        var rows = Array.from(vend.values()).sort((a,b) => b.inst - a.inst);
+        var rows = Array.from(vend.values()).sort(function(a,b){ return b.inst - a.inst; });
         document.getElementById('bi-kpi-row').innerHTML = `
             <div class="kpi"><div class="kpi-label">Leads</div><div class="kpi-value">${crm.length}</div></div>
             <div class="kpi"><div class="kpi-label">Vendas Reais</div><div class="kpi-value" style="color:var(--green)">${rows.reduce((s,r)=>s+r.inst,0)}</div></div>
             <div class="kpi"><div class="kpi-label">Equipe</div><div class="kpi-value">${rows.length}</div></div>`;
 
-        document.getElementById('bi-truth-body').innerHTML = rows.map((r, i) => {
+        document.getElementById('bi-truth-body').innerHTML = rows.map(function(r, i) {
             var tx = r.leads ? ((r.inst / r.leads) * 100).toFixed(1) : 0;
-            var gap = Math.max(0, r.conv - r.inst);
-            return `<tr><td>${i+1}</td><td style="font-weight:700">${r.nome}</td><td>${r.leads}</td><td>${r.conv}</td><td style="color:var(--green);font-weight:800">${r.inst}</td><td>${tx}%</td><td style="color:var(--red)">${gap>0?'+'+gap:'OK'}</td></tr>`;
+            return `<tr><td>${i+1}</td><td style="font-weight:700">${r.nome}</td><td>${r.leads}</td><td>${r.conv}</td><td style="color:var(--green);font-weight:800">${r.inst}</td><td>${tx}%</td></tr>`;
         }).join('');
-    } catch(e){ console.error("Erro BI:", e); }
-};
-
-// 4. SYNC DRIVE TURBO
-window.nuvyonCloudSync = async function() {
-    var msg = document.getElementById('cloud-sub-msg');
-    if(msg) msg.textContent = "⏳ Sincronizando...";
-    try {
-        var res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + NUV_FID + "' in parents and trashed=false")}&key=${NUV_KEY}`);
-        var data = await res.json();
-        var files = data.files || [];
-        for (var m of NUV_MAPA) {
-            var target = files.filter(x => m.r.test(x.name)).sort((a,b) => b.modifiedTime?.localeCompare(a.modifiedTime))[0];
-            if(target) {
-                if(msg) msg.textContent = "⬇️ " + m.label;
-                var dl = await fetch(`https://www.googleapis.com/drive/v3/files/${target.id}?alt=media&key=${NUV_KEY}`);
-                var blob = await dl.blob();
-                var ext = target.name.split('.').pop().toLowerCase();
-                var json = [];
-                if(ext === 'csv') {
-                    json = Papa.parse(await blob.text(), {header:true, skipEmptyLines:true}).data;
-                } else {
-                    var wb = XLSX.read(await blob.arrayBuffer(), {type:'array'});
-                    json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
-                }
-                if(m.tipo==='os') STATE.rawOS = json;
-                if(m.tipo==='at') STATE.rawAT = json;
-                if(m.tipo==='matrix') STATE.relatorioAnalitico = json;
-                if(m.tipo==='crm') STATE.rawCRM = json;
-                if(m.tipo==='vendas') STATE.rawVendas = json;
-                STATE.loaded[m.tipo] = true;
-            }
-        }
-        if(typeof _processRestoredState === 'function') _processRestoredState();
-        if(typeof renderAll === 'function') renderAll();
-        if(typeof renderBIComercial === 'function') renderBIComercial();
-        if(msg) msg.textContent = "✅ Dashboard Sincronizado!";
-    } catch(e){ if(msg) msg.textContent = "❌ Erro na Nuvem"; }
-};
-
-// 5. MENU AGRUPADO
-window.buildGroupedTabbar = function() {
-    var tabbar = document.getElementById('tabbar');
-    if(!tabbar || typeof ABA_GRUPOS === 'undefined') return;
-    var activeBtn = tabbar.querySelector('.tab-btn.active') || tabbar.querySelector('.tabgroup-item.active');
-    var currentTab = activeBtn ? activeBtn.id.replace('tab-','') : 'gestao';
-    var html = '';
-    ABA_GRUPOS.forEach(g => {
-        var abasOk = (typeof SESSION !== 'undefined' && SESSION) ? g.abas.filter(id => SESSION.role === 'master' || (SESSION.abas && SESSION.abas.includes(id))) : g.abas;
-        if(!abasOk.length) return;
-        var isGActive = g.abas.includes(currentTab);
-        html += `<div class="tabgroup-wrap"><button class="tabgroup-btn ${isGActive?'active':''}" onclick="showTab('${abasOk[0]}')">${g.label} ▾</button><div class="tabgroup-dropdown">${abasOk.map(id => `<button class="tabgroup-item ${id===currentTab?'active':''}" onclick="showTab('${id}')" id="tab-${id}">${id}</button>`).join('')}</div></div>`;
-    });
-    tabbar.innerHTML = html + (document.getElementById('tab-logoff')?.outerHTML || '');
-};
-
-// INICIALIZAÇÃO
-window.addEventListener('load', function() {
-    var backupSession = applySession;
-    window.applySession = function() {
-        if(typeof backupSession === 'function') backupSession();
-        setTimeout(buildGroupedTabbar, 300);
     };
-    setTimeout(nuvyonCloudSync, 4000);
-    if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
-});
 
-function biLocalUpload(tipo, input) {
-    var file = input.files[0]; if(!file) return;
-    file.text().then(t => {
-        var data = Papa.parse(t, {header:true}).data;
-        if(tipo === 'crm') STATE.rawCRM = data;
-        if(tipo === 'vendas') STATE.rawVendas = data;
-        renderBIComercial();
+    // --- SYNC DRIVE TURBO ---
+    window.nuvyonCloudSync = async function() {
+        var msg = document.getElementById('cloud-sub-msg');
+        if(msg) msg.textContent = "⏳ Conectando Cloud...";
+        try {
+            var res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent("'" + DRIVE_F + "' in parents and trashed=false")}&key=${DRIVE_K}`);
+            var data = await res.json();
+            var files = data.files || [];
+            for (var m of MAPA_ARQUIVOS) {
+                var target = files.filter(function(x){ return m.r.test(x.name); }).sort(function(a,b){ return b.modifiedTime?.localeCompare(a.modifiedTime); })[0];
+                if(target) {
+                    if(msg) msg.textContent = "⬇️ " + m.label;
+                    var dl = await fetch(`https://www.googleapis.com/drive/v3/files/${target.id}?alt=media&key=${DRIVE_K}`);
+                    var blob = await dl.blob();
+                    var ext = target.name.split('.').pop().toLowerCase();
+                    var json = [];
+                    if(ext === 'csv') {
+                        var text = await blob.text();
+                        json = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
+                    } else {
+                        var wb = XLSX.read(await blob.arrayBuffer(), {type:'array'});
+                        json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
+                    }
+                    if(m.tipo==='os') STATE.rawOS = json;
+                    if(m.tipo==='at') STATE.rawAT = json;
+                    if(m.tipo==='matrix') STATE.relatorioAnalitico = json;
+                    if(m.tipo==='crm') STATE.rawCRM = json;
+                    if(m.tipo==='vendas') STATE.rawVendas = json;
+                    STATE.loaded[m.tipo] = true;
+                }
+            }
+            if(typeof _processRestoredState === 'function') _processRestoredState();
+            if(typeof renderAll === 'function') renderAll();
+            if(typeof renderBIComercial === 'function') renderBIComercial();
+            if(msg) msg.textContent = "✅ Dashboard Sincronizado!";
+        } catch(e){ if(msg) msg.textContent = "❌ Erro na Nuvem"; }
+    };
+
+    // --- MENU AGRUPADO RESILIENTE ---
+    window.buildGroupedTabbar = function() {
+        var tabbar = document.getElementById('tabbar');
+        if(!tabbar || typeof ABA_GRUPOS === 'undefined') return;
+        var activeBtn = tabbar.querySelector('.tab-btn.active') || tabbar.querySelector('.tabgroup-item.active');
+        var currentTab = activeBtn ? activeBtn.id.replace('tab-','') : 'gestao';
+        var html = '';
+        ABA_GRUPOS.forEach(function(g) {
+            var abasOk = (typeof SESSION !== 'undefined' && SESSION) ? g.abas.filter(function(id){ return SESSION.role === 'master' || (SESSION.abas && SESSION.abas.includes(id)); }) : g.abas;
+            if(!abasOk.length) return;
+            var isGActive = g.abas.includes(currentTab);
+            html += `<div class="tabgroup-wrap"><button class="tabgroup-btn ${isGActive?'active':''}" onclick="showTab('${abasOk[0]}')">${g.label} ▾</button><div class="tabgroup-dropdown">${abasOk.map(function(id){
+                var aba = ABAS.find(function(a){return a.id===id;});
+                return `<button class="tabgroup-item ${id===currentTab?'active':''}" onclick="showTab('${id}')" id="tab-${id}">${aba?aba.label:id}</button>`;
+            }).join('')}</div></div>`;
+        });
+        tabbar.innerHTML = html + (document.getElementById('tab-logoff')?.outerHTML || '');
+    };
+
+    // INICIALIZAÇÃO
+    window.addEventListener('load', function() {
+        var oldApply = window.applySession;
+        window.applySession = function() {
+            if(typeof oldApply === 'function') oldApply();
+            setTimeout(buildGroupedTabbar, 300);
+        };
+        if(typeof buildGroupedTabbar === 'function') buildGroupedTabbar();
+        setTimeout(nuvyonCloudSync, 4000);
     });
-}
+
+    window.biLocalUpload = function(tipo, input) {
+        var file = input.files[0]; if(!file) return;
+        file.text().then(function(t) {
+            var data = Papa.parse(t, {header:true}).data;
+            if(tipo === 'crm') STATE.rawCRM = data;
+            if(tipo === 'vendas') STATE.rawVendas = data;
+            renderBIComercial();
+        });
+    };
+})(window, document);
 </script>
 
+<!-- MODAL CLIENTE FIX -->
 <div id="cli-modal-overlay" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:#000a;z-index:3000;overflow-y:auto;padding:24px 16px">
-  <div id="cli-modal-box" style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:760px;margin:0 auto;padding:22px;">
+  <div id="cli-modal-box" style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:760px;margin:0 auto;padding:22px;overflow:hidden">
     <div id="cli-modal-nome" style="font-size:18px;font-weight:800;color:var(--text)">Ficha do Cliente</div>
+    <div id="cli-modal-sub" style="font-size:12px;color:var(--muted)">Histórico detalhado</div>
     <div id="cli-hist-content" style="margin-top:20px"></div>
   </div>
 </div>
